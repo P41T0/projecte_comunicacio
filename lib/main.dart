@@ -390,7 +390,7 @@ class _MyHomePageState extends State<MyHomePage>
                     onChanged:
                         (value) => setState(() {
                           destinatari =
-                          _nomDestinatariController.text = value.trim();
+                              _nomDestinatariController.text = value.trim();
                           destinatari =
                               "${value.trim() != "" ? value : "destinatari"}@${_serverDestinatariController.text.trim() != "" ? _serverDestinatariController.text : "servidor.com"}";
                         }),
@@ -417,7 +417,9 @@ class _MyHomePageState extends State<MyHomePage>
             ElevatedButton(
               child: Text('Chat'),
               onPressed: () {
-                if (_nomDestinatariController.text.trim().isEmpty || _serverDestinatariController.text.trim().isEmpty) {
+                if ((_nomDestinatariController.text.trim().isEmpty ||
+                        _serverDestinatariController.text.trim().isEmpty) &&
+                    connectionStatus == 'Autenticat') {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('El camp del destinatari està buit'),
@@ -425,7 +427,6 @@ class _MyHomePageState extends State<MyHomePage>
                   );
                   return;
                 }
-
                 Navigator.push(
                   context,
                   MaterialPageRoute(

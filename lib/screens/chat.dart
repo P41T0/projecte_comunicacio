@@ -33,7 +33,13 @@ class ChatPage extends StatefulWidget {
   final String presenceMode;
   final String presenceType;
 
-  const ChatPage({required this.xmpp, required this.destinatari, required this.presenceMode, required this.presenceType, super.key});
+  const ChatPage({
+    required this.xmpp,
+    required this.destinatari,
+    required this.presenceMode,
+    required this.presenceType,
+    super.key,
+  });
 
   @override
   State<ChatPage> createState() => _ChatPageState();
@@ -47,7 +53,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     user: "other",
     id: "1",
     status: "llegit",
-    encrypted: false
+    encrypted: false,
   );
   Message m2 = Message(
     hour: "12:01",
@@ -55,7 +61,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     user: "me",
     id: "1",
     status: "llegit",
-    encrypted: false
+    encrypted: false,
   );
   Message m3 = Message(
     hour: "12:02",
@@ -63,14 +69,27 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     user: "other",
     id: "1",
     status: "llegit",
-    encrypted: false
+    encrypted: false,
   );
   late final List<Message> _missatges = [m1, m2, m3];
   final ScrollController _scrollController = ScrollController();
+  String estatDestinatari = "Desconegut";
+  String estatXatDestinatari = "";
+  String modeDestinatari = "Desconegut";
+  String mode = "composing";
+
+  Future setPresence() async {
+    await widget.xmpp.changePresenceType(
+      widget.presenceType,
+      widget.presenceMode,
+    );
+  }
 
   @override
   void initState() {
     super.initState();
+    setPresence();
+    subscribeToPresence(); // Sol·licita subscriure's a l'estat de presència
     XmppConnection.addListener(this); // Registra el listener
   }
 
@@ -80,12 +99,14 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
       this,
     ); // Elimina el listener quan es destrueix la pàgina
     super.dispose();
-  }    
+  }
+
   Future<void> changePresenceType(presenceType, presenceMode) async {
     await widget.xmpp.changePresenceType(presenceType, presenceMode);
   }
 
   Future<void> _sendMessage() async {
+    enviarEstatEscrivint("active");
     _missatgeEnviar = _messageController.text;
     DateTime hora = DateTime.now();
     String horaFormatada = "${hora.hour}:${hora.minute}";
@@ -99,7 +120,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
           user: "me",
           status: "enviant",
           id: DateTime.now().millisecondsSinceEpoch.toString(),
-          encrypted: false
+          encrypted: false,
         );
         _missatges.add(missatge);
       });
@@ -112,6 +133,9 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
         "$id",
         DateTime.now().millisecondsSinceEpoch,
       );
+
+      // Notifica que estàs actiu després d'enviar el missatge
+      enviarEstatEscrivint("active");
 
       // Neteja el camp de text
       _messageController.clear();
@@ -132,8 +156,10 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
   void _desencriptarMissatge(int index) {
     setState(() {
       // Exemple: Canvia el contingut del missatge a la versió desencriptada
-      _missatges[index].missatge = "Missatge desencriptat: ${_missatges[index].missatge}";
-      _missatges[index].encrypted = false; // Marca el missatge com a desencriptat
+      _missatges[index].missatge =
+          "Missatge desencriptat: ${_missatges[index].missatge}";
+      _missatges[index].encrypted =
+          false; // Marca el missatge com a desencriptat
     });
 
     if (kDebugMode) {
@@ -144,19 +170,52 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
   final _messageController = TextEditingController();
   @override
   Widget build(BuildContext context) {
-    changePresenceType(widget.presenceMode, widget.presenceMode);
     return Scaffold(
-      appBar: AppBar(title: 
-      Row(children: [
-        CircleAvatar(child: Text(widget.destinatari[0].toUpperCase())),
-        SizedBox(width: 10),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      appBar: AppBar(
+        title: Row(
           children: [
-          Text(widget.destinatari, style: TextStyle(fontSize: 18)),
+            CircleAvatar(
+              child: Text(
+                widget.destinatari[0].toUpperCase(),
+              ), // Inicial del destinatari
+            ),
+            SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(widget.destinatari, style: TextStyle(fontSize: 18)),
+                Text(
+                  estatDestinatari == "PresenceType.available"
+                      ? modeDestinatari == "PresenceMode.available"
+                          ? "Disponible"
+                          : modeDestinatari == "PresenceMode.unavailable"
+                          ? "Fora de línia"
+                          : modeDestinatari == "PresenceMode.dnd"
+                          ? "Ocupat"
+                          : modeDestinatari == "PresenceMode.away"
+                          ? "Absent"
+                          : modeDestinatari == "PresenceMode.xa"
+                          ? "Absent durant un temps"
+                          : "Estat desconegut"
+                      : "",
+                  style: TextStyle(
+                    fontSize: 14,
+                    color:
+                        modeDestinatari == "PresenceMode.available"
+                            ? Colors.green
+                            : modeDestinatari == "PresenceMode.unavailable"
+                            ? Colors.red
+                            : modeDestinatari == "PresenceMode.dnd"
+                            ? Colors.red
+                            : modeDestinatari == "PresenceMode.away"
+                            ? Colors.orange
+                            : Colors.grey,
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
-      ],)
       ),
       body: Center(
         child: Column(
@@ -179,30 +238,39 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
                           title: Text(
                             _missatges[index].missatge,
                             style: TextStyle(
-                              fontStyle: _missatges[index].encrypted ? FontStyle.italic : FontStyle.normal,
-                              color: _missatges[index].encrypted ? Colors.grey : Colors.black,
+                              fontStyle:
+                                  _missatges[index].encrypted
+                                      ? FontStyle.italic
+                                      : FontStyle.normal,
+                              color:
+                                  _missatges[index].encrypted
+                                      ? Colors.grey
+                                      : Colors.black,
                             ),
                           ),
-                          subtitle: _missatges[index].user == "me"
-                              ? Row(
-                                  children: [
-                                    Text(_missatges[index].hour),
-                                    SizedBox(width: 10),
-                                    Text(_missatges[index].status),
-                                  ],
-                                )
-                              : Row(
-                                  children: [
-                                    Text(_missatges[index].hour),
-                                    SizedBox(width: 10),
-                                    // Mostra el botó només si el missatge està xifrat
-                                    if (_missatges[index].encrypted)
-                                      ElevatedButton(
-                                        onPressed: () => _desencriptarMissatge(index),
-                                        child: Text('Desencriptar'),
-                                      ),
-                                  ],
-                                ),
+                          subtitle:
+                              _missatges[index].user == "me"
+                                  ? Row(
+                                    children: [
+                                      Text(_missatges[index].hour),
+                                      SizedBox(width: 10),
+                                      Text(_missatges[index].status),
+                                    ],
+                                  )
+                                  : Row(
+                                    children: [
+                                      Text(_missatges[index].hour),
+                                      SizedBox(width: 10),
+                                      // Mostra el botó només si el missatge està xifrat
+                                      if (_missatges[index].encrypted)
+                                        ElevatedButton(
+                                          onPressed:
+                                              () =>
+                                                  _desencriptarMissatge(index),
+                                          child: Text('Desencriptar'),
+                                        ),
+                                    ],
+                                  ),
                         ),
                       ),
                     ),
@@ -210,25 +278,48 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
                 },
               ),
             ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            Column(
               children: [
-                SizedBox(
-                  width: 200,
-                  child: TextField(
-                    controller: _messageController,
-                    decoration: const InputDecoration(
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
+                Text(estatXatDestinatari),
+                SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 200,
+                      child: TextField(
+                        controller: _messageController,
+                        decoration: const InputDecoration(
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          border: OutlineInputBorder(),
+                          labelText: "Escriu un missatge",
+                        ),
+                        onChanged: (text) {
+                          if (text.isNotEmpty) {
+                            enviarEstatEscrivint(
+                              "composing",
+                            ); // Notifica que estàs escrivint
+                          } else {
+                            enviarEstatEscrivint(
+                              "paused",
+                            ); // Notifica que has deixat d'escriure
+                          }
+                        },
+                        onEditingComplete: () {
+                          _sendMessage();
+                          // Notifica que estàs actiu
+                        },
                       ),
-                      border: OutlineInputBorder(),
-                      labelText: "Escriu un missatge",
                     ),
-                    onEditingComplete: _sendMessage,
-                  ),
+                    ElevatedButton(
+                      onPressed: _sendMessage,
+                      child: Text('Enviar'),
+                    ),
+                  ],
                 ),
-                ElevatedButton(onPressed: _sendMessage, child: Text('Enviar')),
               ],
             ),
             SizedBox(height: 20),
@@ -243,45 +334,74 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     // Comprova si el cos del missatge és buit o null
     if (messageChat.body == null || messageChat.body!.trim().isEmpty) {
       if (kDebugMode) {
-        print("Missatge rebut amb cos buit o null de ${messageChat.from} ${messageChat.type} ${messageChat.chatStateType}");
+        print(
+          "Missatge rebut amb cos buit o null de ${messageChat.from} ${messageChat.type} ${messageChat.chatStateType}",
+        );
       }
     }
 
     setState(() {
-      if((messageChat.type)?.toLowerCase() == "ack"){
+      if ((messageChat.type)?.toLowerCase() == "ack") {
         for (var message in _missatges) {
           if (message.id == messageChat.id) {
             message.status = "enviat"; // Marca el missatge com a llegit
           }
         }
       }
-      if((messageChat.type)?.toLowerCase() == "chatstate"){
-        if (kDebugMode) {
-          print("estatus: ${messageChat.chatStateType} ${messageChat.toString()}");
-        }
-        if(messageChat.chatStateType == "active"){
-        for (var message in _missatges) {
-          if (messageChat.id == message.id) {
-            message.status = "llegit"; // Marca el missatge com a llegit
+      if ((messageChat.type)?.toLowerCase() == "chatstate") {
+        if (messageChat.chatStateType == "composing") {
+          setState(() {
+            estatXatDestinatari = "${widget.destinatari} esta escrivint...";
+          });
+          if (kDebugMode) {
+            print("està escrivint");
+          }
+        } else if (messageChat.chatStateType == "paused") {
+          setState(() {
+            estatXatDestinatari = "${widget.destinatari} ha deixat d'escriure";
+          });
+        } else if (messageChat.chatStateType == "inactive") {
+          setState(() {
+            estatXatDestinatari = "";
+          });
+        } else if (messageChat.chatStateType == "gone") {
+          if (kDebugMode) {
+            print("ha marxat");
           }
         }
-        if(messageChat.body!=null){
-      // Afegeix el missatge rebut a la llista de missatges
-      _missatges.add(
-        Message(
-          hour: "${DateTime.now().hour}:${DateTime.now().minute}",
-          missatge: messageChat.body!, // Contingut del missatge
-          user:
-              messageChat.from
-                  .toString(), // JID de l'usuari que envia el missatge
-          id: messageChat.id.toString(), // ID del missatge
-          status: "enviat", // Estat del missatge
-          encrypted: true
-        ),
-      );
-      sendReceipt(messageChat);
-      }}
-  }});
+        if (kDebugMode) {
+          print(
+            "estatus: ${messageChat.chatStateType} ${messageChat.toString()}",
+          );
+        }
+        if (messageChat.chatStateType == "active") {
+          setState(() {
+            estatXatDestinatari = "";
+          });
+          for (var message in _missatges) {
+            if (messageChat.id == message.id) {
+              message.status = "llegit"; // Marca el missatge com a llegit
+            }
+          }
+          if (messageChat.body != null && messageChat.body!.trim().isNotEmpty) {
+            // Afegeix el missatge rebut a la llista de missatges
+            _missatges.add(
+              Message(
+                hour: "${DateTime.now().hour}:${DateTime.now().minute}",
+                missatge: messageChat.body!, // Contingut del missatge
+                user:
+                    messageChat.from
+                        .toString(), // JID de l'usuari que envia el missatge
+                id: messageChat.id.toString(), // ID del missatge
+                status: "enviat", // Estat del missatge
+                encrypted: true,
+              ),
+            );
+            sendReceipt(messageChat);
+          }
+        }
+      }
+    });
 
     // Opcional: Mostra el missatge a la consola per depuració
     if (kDebugMode) {
@@ -291,13 +411,15 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     // Desplaça la vista cap avall per mostrar el nou missatge
     _desplacarAbaix();
   }
+
   void sendReceipt(MessageChat messageChat) async {
-        widget.xmpp.sendDelieveryReceipt(
+    widget.xmpp.sendDelieveryReceipt(
       messageChat.from.toString(),
       messageChat.id.toString(),
       true.toString(),
     );
   }
+
   @override
   void onChatStateChange(ChatState chatState) {
     if (kDebugMode) {
@@ -321,18 +443,19 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
   }
 
   @override
-  void onPresenceChange(PresentModel message) {
-      if (kDebugMode) {
-    print("Presència canviada: Usuari: ${message.from} Estat: ${message.presenceMode} Missatge d'estat: ${message.presenceType}");
-  }
-
-  // Comprova si la presència és del destinatari actual
-  if (message.from == widget.destinatari) {
+  void onPresenceChange(PresentModel presentModel) {
+    String from = presentModel.from ?? "desconegut";
+    if(presentModel.from.toString() == widget.destinatari){
     setState(() {
-      String estatDestinatari = message.presenceType?.toString() ?? "Desconegut";
-      String modeDestinatari = message.presenceMode?.toString() ?? "Desconegut";
+      estatDestinatari = presentModel.presenceType.toString();
+      modeDestinatari = presentModel.presenceMode.toString();
     });
-  }
+    }
+    if (kDebugMode) {
+      print(
+        "Presència de $from: Type: $estatDestinatari, Mode: $modeDestinatari",
+      );
+    }
   }
 
   @override
@@ -356,7 +479,6 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     // TODO: implement onXmppError
   }
 
-
   void onNewMessage(message) {
     setState(() {
       // Afegeix el missatge rebut a la llista de missatges
@@ -367,11 +489,34 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
           user: "other", // Marca el missatge com a rebut
           id: message.id, // ID del missatge
           status: "enviat", // Estat del missatge
-          encrypted: true
+          encrypted: true,
         ),
       );
     });
     // Desplaça la vista cap avall per mostrar el nou missatge
     _desplacarAbaix();
   }
+
+  void enviarEstatEscrivint(String estat) async {
+    if (mode != estat) {
+      setState(() {
+        mode = estat;
+      });
+      await widget.xmpp.changeTypingStatus(widget.destinatari, estat);
+    }
+    if (kDebugMode) {
+      print("Estat de xat enviat: $estat");
+    }
+  }
+
+  Future<void> subscribeToPresence() async {
+    await widget.xmpp.createRoster(widget.destinatari);
+    if (kDebugMode) {
+      print("Sol·licitud de subscripció enviada a ${widget.destinatari}");
+    }
+  }
+}
+
+String normalitzarJid(String jid) {
+  return jid.split('/')[0]; // Retorna només la part abans de la barra
 }

@@ -6,7 +6,6 @@ import 'dart:io';
 import 'package:provacomunicacio2/native_log_helper.dart';
 import 'package:provacomunicacio2/screens/chat.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:provacomunicacio2/screens/usb_serial.dart';
 import 'package:xmpp_plugin/ennums/xmpp_connection_state.dart';
 import 'package:xmpp_plugin/error_response_event.dart';
 import 'package:xmpp_plugin/models/chat_state_model.dart';
@@ -208,7 +207,7 @@ class _MyHomePageState extends State<MyHomePage>
       "host": _hostController.text,
       "port": '5222',
       "nativeLogFilePath": NativeLogHelper.logFilePath,
-      "requireSSLConnection": false,
+      "requireSSLConnection": true,
       "autoDeliveryReceipt": false,
       "useStreamManagement": false,
       "automaticReconnection": true,

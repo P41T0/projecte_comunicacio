@@ -253,6 +253,7 @@ class _MyHomePageState extends State<MyHomePage>
     // fast, so that you can just rebuild anything that needs updating rather
     // than having to individually change instances of widgets.
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         // TRY THIS: Try changing the color here to a specific color (to
         // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
@@ -262,190 +263,194 @@ class _MyHomePageState extends State<MyHomePage>
         // the App.build method, and use it to set our appbar title.
         title: Text(widget.title),
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text(
-              'Introdueix les dades de connexió',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            SizedBox(height: 10),
-            SizedBox(
-              width: 300,
-              child: Column(
-                children: [
-                  TextField(
-                    controller: _nomUsuariController,
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(),
-                      labelText: 'Usuari',
-                      hintText: 'usuari',
-                    ),
-                    onChanged:
-                        (value) => setState(() {
-                          _nomUsuariController.text = value.trim();
-                          usuari =
-                              "${value.trim() != "" ? value : "usuari"}@${_hostController.text.trim() != '' ? _hostController.text : 'servidor.com'}";
-                        }),
-                  ),
-                  SizedBox(height: 10),
-                  TextField(
-                    controller: _hostController,
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(),
-                      labelText: 'Servidor',
-                      hintText: 'servidor.com',
-                    ),
-                    onChanged:
-                        (value) => setState(() {
-                          _hostController.text = value.trim();
-                          usuari =
-                              "${_nomUsuariController.text.trim() != "" ? _nomUsuariController.text : "usuari"}@${value.trim() != '' ? value : 'servidor.com'}";
-                        }),
-                  ),
-                  SizedBox(height: 10),
-                  Text("Usuari: $usuari"),
-                  SizedBox(height: 10),
-                  TextField(
-                    controller: _contrasenyaController,
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(),
-                      labelText: 'Contrasenya',
-                      hintText: '***********',
-                    ),
-                    obscureText: true,
-                  ),
-                ],
+      body: SingleChildScrollView(
+        child: Center(
+          // Center is a layout widget. It takes a single child and positions it
+          // in the middle of the parent.
+          child: Column(
+            // Column is also a layout widget. It takes a list of children and
+            // arranges them vertically. By default, it sizes itself to fit its
+            // children horizontally, and tries to be as tall as its parent.
+            //
+            // Column has various properties to control how it sizes itself and
+            // how it positions its children. Here we use mainAxisAlignment to
+            // center the children vertically; the main axis here is the vertical
+            // axis because Columns are vertical (the cross axis would be
+            // horizontal).
+            //
+            // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
+            // action in the IDE, or press "p" in the console), to see the
+            // wireframe for each widget.
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              Text(
+                'Introdueix les dades de connexió',
+                style: Theme.of(context).textTheme.titleLarge,
               ),
-            ),
-            SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: () async {
-                if (connectionStatus == 'Autenticat') {
-                  await disconnectXMPP();
-                } else {
-                  await connect();
-                }
-              },
-              child: Text(
-                connectionStatus == 'Autenticat' ? 'Desconnectar' : 'Connectar',
+              SizedBox(height: 10),
+              SizedBox(
+                width: 300,
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: _nomUsuariController,
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'Usuari',
+                        hintText: 'usuari',
+                      ),
+                      onChanged:
+                          (value) => setState(() {
+                            _nomUsuariController.text = value.trim();
+                            usuari =
+                                "${value.trim() != "" ? value : "usuari"}@${_hostController.text.trim() != '' ? _hostController.text : 'servidor.com'}";
+                          }),
+                    ),
+                    SizedBox(height: 10),
+                    TextField(
+                      controller: _hostController,
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'Servidor',
+                        hintText: 'servidor.com',
+                      ),
+                      onChanged:
+                          (value) => setState(() {
+                            _hostController.text = value.trim();
+                            usuari =
+                                "${_nomUsuariController.text.trim() != "" ? _nomUsuariController.text : "usuari"}@${value.trim() != '' ? value : 'servidor.com'}";
+                          }),
+                    ),
+                    SizedBox(height: 10),
+                    Text("Usuari: $usuari"),
+                    SizedBox(height: 10),
+                    TextField(
+                      controller: _contrasenyaController,
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'Contrasenya',
+                        hintText: '***********',
+                      ),
+                      obscureText: true,
+                    ),
+                  ],
+                ),
               ),
-            ),
+              SizedBox(height: 10),
+              ElevatedButton(
+                onPressed: () async {
+                  if (connectionStatus == 'Autenticat') {
+                    await disconnectXMPP();
+                  } else {
+                    await connect();
+                  }
+                },
+                child: Text(
+                  connectionStatus == 'Autenticat'
+                      ? 'Desconnectar'
+                      : 'Connectar',
+                ),
+              ),
 
-            Text("Estat: $connectionStatus"),
-            SizedBox(height: 15),
-            DropdownButton(
-              value: presenceType,
-              items:
-                  presenceTypeItems.map((String items) {
-                    return DropdownMenuItem(value: items, child: Text(items));
-                  }).toList(),
-              onChanged: (val) {
-                setState(() {
-                  presenceType = val.toString();
-                  changePresenceType(presenceType, presenceMode);
-                });
-              },
-            ),
-            SizedBox(height: 15),
-            DropdownButton(
-              value: presenceMode,
-              items:
-                  presenceModeitems.map((String items) {
-                    return DropdownMenuItem(value: items, child: Text(items));
-                  }).toList(),
-              onChanged: (val) {
-                setState(() {
-                  presenceMode = val.toString();
-                  changePresenceType(presenceType, presenceMode);
-                });
-              },
-            ),
-            SizedBox(
-              width: 300,
-              child: Column(
-                children: [
-                  TextField(
-                    controller: _nomDestinatariController,
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      labelText: 'Nom del destinatari',
-                      hintText: 'destinatari',
-                    ),
-                    onChanged:
-                        (value) => setState(() {
-                          destinatari =
-                              _nomDestinatariController.text = value.trim();
-                          destinatari =
-                              "${value.trim() != "" ? value : "destinatari"}@${_serverDestinatariController.text.trim() != "" ? _serverDestinatariController.text : "servidor.com"}";
-                        }),
-                  ),
-                  SizedBox(height: 10),
-                  TextField(
-                    controller: _serverDestinatariController,
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      labelText: 'Servidor del destinatari',
-                      hintText: 'servidor.com',
-                    ),
-                    onChanged:
-                        (value) => setState(() {
-                          _serverDestinatariController.text = value.trim();
-                          destinatari =
-                              "${_nomDestinatariController.text.trim() != "" ? _nomDestinatariController.text : "destinatari"}@${value.trim() != '' ? value : 'servidor.com'}";
-                        }),
-                  ),
-                  Text('Destinatari: $destinatari'),
-                ],
+              Text("Estat: $connectionStatus"),
+              SizedBox(height: 15),
+              DropdownButton(
+                value: presenceType,
+                items:
+                    presenceTypeItems.map((String items) {
+                      return DropdownMenuItem(value: items, child: Text(items));
+                    }).toList(),
+                onChanged: (val) {
+                  setState(() {
+                    presenceType = val.toString();
+                    changePresenceType(presenceType, presenceMode);
+                  });
+                },
               ),
-            ),
-            ElevatedButton(
-              child: Text('Chat'),
-              onPressed: () {
-                if ((_nomDestinatariController.text.trim().isEmpty ||
-                        _serverDestinatariController.text.trim().isEmpty) &&
-                    connectionStatus == 'Autenticat') {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('El camp del destinatari està buit'),
+              SizedBox(height: 15),
+              DropdownButton(
+                value: presenceMode,
+                items:
+                    presenceModeitems.map((String items) {
+                      return DropdownMenuItem(value: items, child: Text(items));
+                    }).toList(),
+                onChanged: (val) {
+                  setState(() {
+                    presenceMode = val.toString();
+                    changePresenceType(presenceType, presenceMode);
+                  });
+                },
+              ),
+              SizedBox(
+                width: 300,
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: _nomDestinatariController,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'Nom del destinatari',
+                        hintText: 'destinatari',
+                      ),
+                      onChanged:
+                          (value) => setState(() {
+                            destinatari =
+                                _nomDestinatariController.text = value.trim();
+                            destinatari =
+                                "${value.trim() != "" ? value : "destinatari"}@${_serverDestinatariController.text.trim() != "" ? _serverDestinatariController.text : "servidor.com"}";
+                          }),
+                    ),
+                    SizedBox(height: 10),
+                    TextField(
+                      controller: _serverDestinatariController,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'Servidor del destinatari',
+                        hintText: 'servidor.com',
+                      ),
+                      onChanged:
+                          (value) => setState(() {
+                            _serverDestinatariController.text = value.trim();
+                            destinatari =
+                                "${_nomDestinatariController.text.trim() != "" ? _nomDestinatariController.text : "destinatari"}@${value.trim() != '' ? value : 'servidor.com'}";
+                          }),
+                    ),
+                    Text('Destinatari: $destinatari'),
+                  ],
+                ),
+              ),
+              ElevatedButton(
+                child: Text('Chat'),
+                onPressed: () {
+                  if ((_nomDestinatariController.text.trim().isEmpty ||
+                          _serverDestinatariController.text.trim().isEmpty) &&
+                      connectionStatus == 'Autenticat') {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('El camp del destinatari està buit'),
+                      ),
+                    );
+                    return;
+                  }
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (context) => ChatPage(
+                            xmpp: flutterXmpp,
+                            presenceType: presenceType,
+                            presenceMode: presenceMode,
+                            destinatari: destinatari, // Passa l'objecte XMPP
+                          ),
                     ),
                   );
-                  return;
-                }
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder:
-                        (context) => UsbPage()/* ChatPage(
-                          xmpp: flutterXmpp,
-                          presenceType: presenceType,
-                          presenceMode: presenceMode,
-                          destinatari: destinatari, // Passa l'objecte XMPP
-                        ),*/
-                  ),
-                );
-              },
-            ),
-          ],
+                },
+              ),
+            ],
+          ),
         ),
+        // This trailing comma makes auto-formatting nicer for build methods.
       ),
-      // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 }

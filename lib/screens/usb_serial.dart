@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:usb_serial/usb_serial.dart';
+import 'dart:typed_data';
 
 class UsbPage extends StatefulWidget {
   const UsbPage({super.key});
@@ -14,6 +15,8 @@ class UsbPageState extends State<UsbPage> {
   String error = "";
   String buttonMessage = "Connecta a l'arduino";
   bool arduinoConnected = false;
+  final TextEditingController _textController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -82,9 +85,17 @@ class UsbPageState extends State<UsbPage> {
     }
   }
 
+  void enviaDadesAArduino(String dades) {
+    if (_port != null && arduinoConnected) {
+      String fulldades = "$dades\n";
+      _port!.write(Uint8List.fromList(fulldades.codeUnits));
+    }
+  }
+
   @override
   void dispose() {
     _port?.close();
+    _textController.dispose();
     super.dispose();
   }
 
@@ -121,6 +132,23 @@ class UsbPageState extends State<UsbPage> {
                       return Card(child: ListTile(title: Text(_data[index])));
                     },
                   ),
+                ),
+                TextField(
+                  controller: _textController,
+                  decoration: InputDecoration(
+                    labelText: "Envia dades a l'Arduino",
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                SizedBox(height: 10),
+                ElevatedButton(
+                  onPressed: () {
+                    if (_textController.text.isNotEmpty) {
+                      enviaDadesAArduino(_textController.text);
+                      _textController.clear(); // Neteja el camp de text després d'enviar
+                    }
+                  },
+                  child: Text("Envia dades"),
                 ),
               ],
             ),

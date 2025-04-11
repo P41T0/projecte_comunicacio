@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:usb_serial/usb_serial.dart';
 import 'package:xmpp_plugin/error_response_event.dart';
 import 'package:xmpp_plugin/models/chat_state_model.dart';
 import 'package:xmpp_plugin/models/connection_event.dart';
@@ -71,12 +72,146 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     status: "llegit",
     encrypted: false,
   );
-  late final List<Message> _missatges = [m1, m2, m3];
+  Message m4 = Message(
+    hour: "12:02",
+    missatge: "Què passa si no connecto el dispositiu?",
+    user: "me",
+    id: "1",
+    status: "llegit",
+    encrypted: false,
+  );
+  Message m5 = Message(
+    hour: "12:05",
+    missatge:
+        "Si no connectes el dispositiu, no podràs enviar missatges ni desencriptar els missatges que rebis.",
+    user: "other",
+    id: "1",
+    status: "llegit",
+    encrypted: false,
+  );
+  Message m6 = Message(
+    hour: "12:06",
+    missatge: "Assegura't de tenir el dispositiu connectat.",
+    user: "other",
+    id: "1",
+    status: "llegit",
+    encrypted: false,
+  );
+  late final List<Message> _missatges = [m1, m2, m3, m4, m5, m6];
   final ScrollController _scrollController = ScrollController();
   String estatDestinatari = "Desconegut";
   String estatXatDestinatari = "";
   String modeDestinatari = "Desconegut";
   String mode = "composing";
+  UsbPort? _port;
+  late final List<String> _data = [];
+  Stream<String>? _stream;
+  String error = "";
+  String buttonMessage = "Connecta a l'arduino";
+  bool arduinoConnected = false;
+  StreamSubscription<String>? _arduinoSubscription;
+
+  Future<void> connectaAArduino() async {
+    List<UsbDevice> devices = await UsbSerial.listDevices();
+    if (devices.isEmpty) {
+      setState(() {
+        error = "No s'ha trobat cap dispositiu.";
+      });
+      print("No s'ha trobat cap dispositiu USB.");
+      return;
+    }
+
+    for (var device in devices) {
+      print("Dispositiu detectat: ${device.productName}");
+    }
+
+    if (arduinoConnected == false) {
+      _port = await devices[0].create();
+      if (!await _port!.open()) {
+        setState(() {
+          error = "No s'ha pogut obrir el port.";
+        });
+        return;
+      }
+
+      await _port!.setDTR(true);
+      await _port!.setRTS(true);
+      await _port!.setPortParameters(
+        9600,
+        UsbPort.DATABITS_8,
+        UsbPort.STOPBITS_1,
+        UsbPort.PARITY_NONE,
+      );
+
+      _stream = _port!.inputStream!.map((data) {
+        return String.fromCharCodes(data);
+      });
+
+      _stream!.listen((String data) {
+        setState(() {
+          if (data != "") {
+            _data.add(data);
+          }
+          error = "";
+          buttonMessage = 'Desconnecta de ${devices[0].productName}';
+        });
+        arduinoConnected = true;
+      });
+    } else {
+      if (devices.isNotEmpty) {
+        await _port!.close();
+        setState(() {
+          buttonMessage = 'Torna a connectar a ${devices[0].productName}';
+          if (_data.isNotEmpty) {
+            _data.removeRange(0, _data.length);
+          }
+        });
+        arduinoConnected = false;
+      } else {
+        setState(() {
+          buttonMessage = "Connecta a l'arduino";
+          if (_data.isNotEmpty) {
+            _data.removeRange(0, _data.length);
+          }
+        });
+        arduinoConnected = false;
+      }
+    }
+  }
+
+  void enviaDadesAArduino(String dades) {
+    if (_port != null && arduinoConnected) {
+      String fulldades = "$dades\r\n";
+      _port!.write(Uint8List.fromList(fulldades.codeUnits));
+    } else {
+      setState(() {
+        error = "No s'ha pogut enviar dades a l'Arduino.";
+      });
+    }
+  }
+
+  Future<String?> _esperaRespostaArduino() async {
+    if (!arduinoConnected || _stream == null) {
+      return null;
+    }
+    Completer<String?> completer = Completer<String?>();
+    StreamSubscription<String>? subscription;
+
+    subscription = _stream?.listen((String data) {
+      if (data.isNotEmpty) {
+        completer.complete(data);
+        subscription?.cancel();
+      }
+    });
+
+    return completer.future.timeout(
+      Duration(seconds: 5),
+      onTimeout: () {
+        subscription?.cancel();
+        return null;
+      },
+    );
+  }
 
   Future setPresence() async {
     await widget.xmpp.changePresenceType(
@@ -91,13 +226,41 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     setPresence();
     subscribeToPresence(); // Sol·licita subscriure's a l'estat de presència
     XmppConnection.addListener(this); // Registra el listener
+    connectaAArduino();
+
+    // Escolta el flux de dades de l'Arduino
+    _arduinoSubscription = _stream?.listen((String data) {
+      setState(() {
+        if (data.isNotEmpty) {
+          _data.add(data);
+        }
+      });
+    });
   }
 
   @override
   void dispose() {
-    XmppConnection.removeListener(
-      this,
-    ); // Elimina el listener quan es destrueix la pàgina
+    // Elimina el listener de XMPP
+    XmppConnection.removeListener(this);
+
+    // Cancel·la el flux de dades de l'Arduino
+    _arduinoSubscription?.cancel();
+
+    // Tanca el port USB si està obert
+    if (_port != null) {
+      try {
+        _port!.close();
+        if (kDebugMode) {
+          print("Port USB tancat correctament.");
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print("Error en tancar el port USB: $e");
+        }
+      }
+    }
+
+    // Assegura't que altres recursos es tanquen correctament
     super.dispose();
   }
 
@@ -112,34 +275,53 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     String horaFormatada = "${hora.hour}:${hora.minute}";
 
     if ((_missatgeEnviar.trim()) != "") {
-      setState(() {
-        // Afegeix el missatge a la llista local
-        Message missatge = Message(
-          hour: horaFormatada,
-          missatge: _missatgeEnviar,
-          user: "me",
-          status: "enviant",
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
-          encrypted: false,
+      try {
+        // Envia el missatge a l'Arduino
+        enviaDadesAArduino("$_missatgeEnviar");
+
+        // Espera la resposta de l'Arduino
+        String? respostaArduino = await _esperaRespostaArduino();
+        if (respostaArduino == null) {
+          setState(() {
+            error = "No s'ha rebut cap resposta de l'Arduino.";
+          });
+          return;
+        }
+
+        // Afegeix el missatge processat a la llista local
+        setState(() {
+          Message missatge = Message(
+            hour: horaFormatada,
+            missatge: respostaArduino, // Utilitza la resposta de l'Arduino
+            user: "me",
+            status: "enviant",
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            encrypted: false,
+          );
+          _missatges.add(missatge);
+        });
+
+        // Envia el missatge processat a través de XMPP
+        int id = DateTime.now().millisecondsSinceEpoch;
+        print("missatge" + respostaArduino);
+        await widget.xmpp.sendMessageWithType(
+          widget.destinatari,
+          respostaArduino, // Envia la resposta de l'Arduino
+          "$id",
+          DateTime.now().millisecondsSinceEpoch,
         );
-        _missatges.add(missatge);
-      });
 
-      // Envia el missatge a través de XMPP
-      int id = DateTime.now().millisecondsSinceEpoch;
-      await widget.xmpp.sendMessageWithType(
-        widget.destinatari,
-        _messageController.text,
-        "$id",
-        DateTime.now().millisecondsSinceEpoch,
-      );
+        // Notifica que estàs actiu després d'enviar el missatge
+        enviarEstatEscrivint("active");
 
-      // Notifica que estàs actiu després d'enviar el missatge
-      enviarEstatEscrivint("active");
-
-      // Neteja el camp de text
-      _messageController.clear();
-      _desplacarAbaix();
+        // Neteja el camp de text
+        _messageController.clear();
+        _desplacarAbaix();
+      } catch (e) {
+        setState(() {
+          error = "Error en enviar el missatge: $e";
+        });
+      }
     }
   }
 
@@ -153,17 +335,58 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     });
   }
 
-  void _desencriptarMissatge(int index) {
-    setState(() {
-      // Exemple: Canvia el contingut del missatge a la versió desencriptada
-      _missatges[index].missatge =
-          "Missatge desencriptat: ${_missatges[index].missatge}";
-      _missatges[index].encrypted =
-          false; // Marca el missatge com a desencriptat
-    });
+  void connectArduinoFunction() {
+    if (arduinoConnected == false) {
+      connectaAArduino();
+    } else {
+      if (_port != null) {
+        try {
+          _port!.close();
+          setState(() {
+            buttonMessage = 'Torna a connectar a la placa';
+            arduinoConnected = false;
+          });
 
-    if (kDebugMode) {
-      print("Missatge desencriptat: ${_missatges[index].missatge}");
+          if (kDebugMode) {
+            print("Port USB tancat correctament.");
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            print("Error en tancar el port USB: $e");
+          }
+        }
+      }
+    }
+  }
+
+  void _desencriptarMissatge(int index) async {
+    try {
+      // Envia el missatge xifrat a l'Arduino
+      enviaDadesAArduino(_missatges[index].missatge);
+
+      // Espera la resposta desencriptada de l'Arduino
+      String? respostaArduino = await _esperaRespostaArduino();
+      if (respostaArduino == null) {
+        setState(() {
+          error = "No s'ha rebut cap resposta de l'Arduino.";
+        });
+        return;
+      }
+
+      // Actualitza el contingut del missatge amb la resposta desencriptada
+      setState(() {
+        _missatges[index].missatge = respostaArduino;
+        _missatges[index].encrypted =
+            false; // Marca el missatge com a desencriptat
+      });
+
+      if (kDebugMode) {
+        print("Missatge desencriptat: ${_missatges[index].missatge}");
+      }
+    } catch (e) {
+      setState(() {
+        error = "Error en desencriptar el missatge: $e";
+      });
     }
   }
 
@@ -220,6 +443,10 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
       body: Center(
         child: Column(
           children: <Widget>[
+            ElevatedButton(
+              onPressed: () => {connectArduinoFunction()},
+              child: Text(buttonMessage),
+            ),
             Expanded(
               child: ListView.builder(
                 controller: _scrollController,
@@ -235,6 +462,10 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
                         alignment: Alignment.center,
                         width: MediaQuery.of(context).size.width * 0.75,
                         child: ListTile(
+                          tileColor:
+                              _missatges[index].user == "other"
+                                  ? Colors.orange[100]
+                                  : Colors.orange[50],
                           title: Text(
                             _missatges[index].missatge,
                             style: TextStyle(
@@ -445,7 +676,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
   @override
   void onPresenceChange(PresentModel presentModel) {
     String from = presentModel.from ?? "desconegut";
-    if(presentModel.from.toString() == widget.destinatari){
+    if(presentModel.from.toString().contains(widget.destinatari)){
     setState(() {
       estatDestinatari = presentModel.presenceType.toString();
       modeDestinatari = presentModel.presenceMode.toString();

@@ -243,7 +243,9 @@ class _MyHomePageState extends State<MyHomePage>
         connect();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("El nom d'usuari ha de contenir el caràcter '@'.")),
+          SnackBar(
+            content: Text("El nom d'usuari ha de contenir el caràcter '@'."),
+          ),
         );
       }
     }
@@ -342,20 +344,33 @@ class _MyHomePageState extends State<MyHomePage>
 
               Text("Estat: $connectionStatus"),
               SizedBox(height: 15),
-              DropdownButton(
-                value: presenceType,
-                items:
-                    presenceTypeItems.map((String items) {
-                      return DropdownMenuItem(value: items, child: Text(items));
-                    }).toList(),
-                onChanged: (val) {
-                  setState(() {
-                    presenceType = val.toString();
-                    changePresenceType(presenceType, presenceMode);
-                  });
-                },
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text("Visibilitat:"),
+                  SizedBox(width: 10,),
+                  DropdownButton(
+                    value: presenceType,
+                    items:
+                        presenceTypeItems.map((String items) {
+                          return DropdownMenuItem(
+                            value: items,
+                            child: Text(items),
+                          );
+                        }).toList(),
+                    onChanged: (val) {
+                      setState(() {
+                        presenceType = val.toString();
+                        changePresenceType(presenceType, presenceMode);
+                      });
+                    },
+                  ),
+                ],
               ),
               SizedBox(height: 15),
+              Row(mainAxisAlignment: MainAxisAlignment.center,
+              children: [Text("Estat:"),
+              SizedBox(width: 10,),
               DropdownButton(
                 value: presenceMode,
                 items:
@@ -368,7 +383,7 @@ class _MyHomePageState extends State<MyHomePage>
                     changePresenceType(presenceType, presenceMode);
                   });
                 },
-              ),
+              )]),
               SizedBox(
                 width: 300,
                 child: Column(
@@ -406,7 +421,9 @@ class _MyHomePageState extends State<MyHomePage>
                             xmpp: flutterXmpp,
                             presenceType: presenceType,
                             presenceMode: presenceMode,
-                            destinatari: _nomUsuariController.text, // Passa l'objecte XMPP
+                            destinatari:
+                                _nomUsuariController
+                                    .text, // Passa l'objecte XMPP
                           ),
                     ),
                   );

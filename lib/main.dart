@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'dart:developer';
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:provacomunicacio2/native_log_helper.dart';
 import 'package:provacomunicacio2/screens/chat.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -73,6 +74,7 @@ class _MyHomePageState extends State<MyHomePage>
     implements DataChangeEvents {
   static late XmppConnection flutterXmpp;
   String connectionStatus = 'Desconnectat';
+  bool userSessionStarted = false;
   @override
   void initState() {
     checkStoragePermission();
@@ -147,15 +149,19 @@ class _MyHomePageState extends State<MyHomePage>
       switch (connectionEvent.type) {
         case XmppConnectionState.authenticated:
           connectionStatus = 'Autenticat'; // Connexió exitosa
+          userSessionStarted = true;
           break;
         case XmppConnectionState.disconnected:
           connectionStatus = 'Desconnectat'; // Connexió desconnectada
+          userSessionStarted = false;
           break;
         case XmppConnectionState.failed:
           connectionStatus = 'Error de connexió'; // Error durant la connexió
+          userSessionStarted = false;
           break;
         default:
           connectionStatus = 'Estat desconegut'; // Altres estats
+          userSessionStarted = false;
       }
     });
 
@@ -194,7 +200,6 @@ class _MyHomePageState extends State<MyHomePage>
   final TextEditingController _contrasenyaController = TextEditingController();
   final TextEditingController _destinatariController = TextEditingController();
   String host = "exemple.com";
-  String destinatary_host = "exemple.com";
 
   Future<void> connect() async {
     host = _nomUsuariController.text.split("@")[1];
@@ -239,26 +244,68 @@ class _MyHomePageState extends State<MyHomePage>
       setState(() {
         _nomUsuariController.text = _nomUsuariController.text.trim();
       });
-      if (_nomUsuariController.text.contains("@")) {
+      if (_nomUsuariController.text.contains("@") &&
+          _nomUsuariController.text.contains(".")) {
         connect();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("El nom d'usuari ha de contenir el caràcter '@'."),
+            content: Text(
+              "El nom d'usuari ha de contenir el caràcter '@' i el caràcter '.'.",
+            ),
           ),
         );
       }
     }
   }
 
-  String presenceType = 'available';
-  var presenceTypeItems = ['available', 'unavailable'];
+  String presenceType = 'Disponible';
+  String realPresenceType = 'available';
+  var presenceTypeItems = [
+    'Disponible',
+    'No disponible',
+  ]; //available, unavailable
 
   ///
-  String presenceMode = 'available';
-  var presenceModeitems = ['chat', 'available', 'away', 'xa', 'dnd'];
+  String presenceMode = 'Disponible';
+  String realPresenceMode = 'available';
+  var presenceModeitems = [
+    'En xat',
+    'Disponible',
+    'Absent',
+    'Absent durant un temps',
+    'Ocupat',
+  ]; //chat, available, away, xa, dnd
 
   Future<void> disconnectXMPP() async => await flutterXmpp.logout();
+
+  void changeTypeDropdown(String value) {
+    if (value == "Disponible") {
+      realPresenceMode = 'available';
+    } else if (value == "No disponible") {
+      realPresenceMode = 'unavailable';
+    }
+    if (userSessionStarted) {
+      changePresenceType(realPresenceType, realPresenceMode);
+    }
+  }
+
+  void changeModeDropdown(String value) {
+    if (value == 'Disponible') {
+      realPresenceMode = 'available';
+    } else if (value == 'En xat') {
+      realPresenceMode = 'chat';
+    } else if (value == 'Absent') {
+      realPresenceMode = 'away';
+    } else if (value == 'Absent durant un temps') {
+      realPresenceMode = 'xa';
+    } else if (value == 'Ocupat') {
+      realPresenceMode = 'dnd';
+    }
+    if (userSessionStarted) {
+      changePresenceType(realPresenceType, realPresenceMode);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -348,7 +395,7 @@ class _MyHomePageState extends State<MyHomePage>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text("Visibilitat:"),
-                  SizedBox(width: 10,),
+                  SizedBox(width: 10),
                   DropdownButton(
                     value: presenceType,
                     items:
@@ -361,29 +408,36 @@ class _MyHomePageState extends State<MyHomePage>
                     onChanged: (val) {
                       setState(() {
                         presenceType = val.toString();
-                        changePresenceType(presenceType, presenceMode);
                       });
+                      changeTypeDropdown(presenceType);
                     },
                   ),
                 ],
               ),
               SizedBox(height: 15),
-              Row(mainAxisAlignment: MainAxisAlignment.center,
-              children: [Text("Estat:"),
-              SizedBox(width: 10,),
-              DropdownButton(
-                value: presenceMode,
-                items:
-                    presenceModeitems.map((String items) {
-                      return DropdownMenuItem(value: items, child: Text(items));
-                    }).toList(),
-                onChanged: (val) {
-                  setState(() {
-                    presenceMode = val.toString();
-                    changePresenceType(presenceType, presenceMode);
-                  });
-                },
-              )]),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text("Estat:"),
+                  SizedBox(width: 10),
+                  DropdownButton(
+                    value: presenceMode,
+                    items:
+                        presenceModeitems.map((String items) {
+                          return DropdownMenuItem(
+                            value: items,
+                            child: Text(items),
+                          );
+                        }).toList(),
+                    onChanged: (val) {
+                      setState(() {
+                        presenceMode = val.toString();
+                        changeModeDropdown(val.toString());
+                      });
+                    },
+                  ),
+                ],
+              ),
               SizedBox(
                 width: 300,
                 child: Column(
@@ -405,7 +459,7 @@ class _MyHomePageState extends State<MyHomePage>
                 child: Text('Chat'),
                 onPressed: () {
                   if (_destinatariController.text.trim().isEmpty &&
-                      connectionStatus == 'Autenticat') {
+                      userSessionStarted == true) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text('El camp del destinatari està buit'),
@@ -419,10 +473,10 @@ class _MyHomePageState extends State<MyHomePage>
                       builder:
                           (context) => ChatPage(
                             xmpp: flutterXmpp,
-                            presenceType: presenceType,
-                            presenceMode: presenceMode,
+                            presenceType: realPresenceType,
+                            presenceMode: realPresenceMode,
                             destinatari:
-                                _nomUsuariController
+                                _destinatariController
                                     .text, // Passa l'objecte XMPP
                           ),
                     ),

@@ -118,12 +118,16 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
       setState(() {
         error = "No s'ha trobat cap dispositiu.";
       });
-      print("No s'ha trobat cap dispositiu USB.");
+      if (kDebugMode) {
+        print("No s'ha trobat cap dispositiu USB.");
+      }
       return;
     }
 
     for (var device in devices) {
-      print("Dispositiu detectat: ${device.productName}");
+      if (kDebugMode) {
+        print("Dispositiu detectat: ${device.productName}");
+      }
     }
 
     if (arduinoConnected == false) {
@@ -278,7 +282,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     if ((_missatgeEnviar.trim()) != "") {
       try {
         // Envia el missatge a l'Arduino
-        enviaDadesAArduino("$_missatgeEnviar");
+        enviaDadesAArduino(_missatgeEnviar);
 
         // Espera la resposta de l'Arduino
         String? respostaArduino = await _esperaRespostaArduino();
@@ -304,7 +308,9 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
 
         // Envia el missatge processat a través de XMPP
         int id = DateTime.now().millisecondsSinceEpoch;
-        print("missatge" + respostaArduino);
+        if (kDebugMode) {
+          print("missatge$respostaArduino");
+        }
         await widget.xmpp.sendMessageWithType(
           widget.destinatari,
           respostaArduino, // Envia la resposta de l'Arduino

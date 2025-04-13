@@ -99,6 +99,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
   );
   late final List<Message> _missatges = [m1, m2, m3, m4, m5, m6];
   final ScrollController _scrollController = ScrollController();
+  String destinatari = "";
   String estatDestinatari = "Desconegut";
   String estatXatDestinatari = "";
   String modeDestinatari = "Desconegut";
@@ -609,20 +610,14 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
           setState(() {
             estatXatDestinatari = "";
           });
-          for (var message in _missatges) {
-            if (messageChat.id == message.id) {
-              message.status = "llegit"; // Marca el missatge com a llegit
-            }
-          }
           if (messageChat.body != null && messageChat.body!.trim().isNotEmpty) {
             // Afegeix el missatge rebut a la llista de missatges
             _missatges.add(
               Message(
                 hour: "${DateTime.now().hour}:${DateTime.now().minute}",
                 missatge: messageChat.body!, // Contingut del missatge
-                user:
-                    messageChat.from
-                        .toString(), // JID de l'usuari que envia el missatge
+                user: messageChat.from.toString(),
+                // JID de l'usuari que envia el missatge
                 id: messageChat.id.toString(), // ID del missatge
                 status: "enviat", // Estat del missatge
                 encrypted: true,
@@ -675,16 +670,20 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
 
   @override
   void onPresenceChange(PresentModel presentModel) {
-    String from = presentModel.from ?? "desconegut";
-    if(presentModel.from.toString().contains(widget.destinatari)){
-    setState(() {
-      estatDestinatari = presentModel.presenceType.toString();
-      modeDestinatari = presentModel.presenceMode.toString();
-    });
+    if (presentModel.from!.contains("/")) {
+      destinatari = presentModel.from!.split("/")[0];
+    } else {
+      destinatari = presentModel.from!;
+    }
+    if (widget.destinatari == destinatari) {
+      setState(() {
+        estatDestinatari = presentModel.presenceType.toString();
+        modeDestinatari = presentModel.presenceMode.toString();
+      });
     }
     if (kDebugMode) {
       print(
-        "Presència de $from: Type: $estatDestinatari, Mode: $modeDestinatari",
+        "Presència de $destinatari: Type: $estatDestinatari, Mode: $modeDestinatari",
       );
     }
   }

@@ -192,19 +192,17 @@ class _MyHomePageState extends State<MyHomePage>
 
   final TextEditingController _nomUsuariController = TextEditingController();
   final TextEditingController _contrasenyaController = TextEditingController();
-  final TextEditingController _hostController = TextEditingController();
-  final TextEditingController _nomDestinatariController =
-      TextEditingController();
-  final TextEditingController _serverDestinatariController =
-      TextEditingController();
-  String destinatari = "destinatari@servidor.com";
-  String usuari = "usuari@servidor.com";
+  final TextEditingController _destinatariController = TextEditingController();
+  String host = "exemple.com";
+  String destinatary_host = "exemple.com";
+
   Future<void> connect() async {
+    host = _nomUsuariController.text.split("@")[1];
     final auth = {
       "user_jid":
-          "${_nomUsuariController.text}@${_hostController.text}/${Platform.isAndroid ? "Android" : "iOS"}",
+          "${_nomUsuariController.text}/${Platform.isAndroid ? "Android" : "iOS"}",
       "password": _contrasenyaController.text,
-      "host": _hostController.text,
+      "host": host,
       "port": '5222',
       "nativeLogFilePath": NativeLogHelper.logFilePath,
       "requireSSLConnection": true,
@@ -232,6 +230,23 @@ class _MyHomePageState extends State<MyHomePage>
 
   Future<void> changePresenceType(presenceType, presenceMode) async {
     await flutterXmpp.changePresenceType(presenceType, presenceMode);
+  }
+
+  void checkConnection() {
+    if (connectionStatus == 'Autenticat') {
+      disconnectXMPP();
+    } else {
+      setState(() {
+        _nomUsuariController.text = _nomUsuariController.text.trim();
+      });
+      if (_nomUsuariController.text.contains("@")) {
+        connect();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("El nom d'usuari ha de contenir el caràcter '@'.")),
+        );
+      }
+    }
   }
 
   String presenceType = 'available';
@@ -292,36 +307,14 @@ class _MyHomePageState extends State<MyHomePage>
                 child: Column(
                   children: [
                     TextField(
+                      keyboardType: TextInputType.emailAddress,
                       controller: _nomUsuariController,
                       decoration: InputDecoration(
                         border: OutlineInputBorder(),
                         labelText: 'Usuari',
-                        hintText: 'usuari',
+                        hintText: 'usuari@servidor.com',
                       ),
-                      onChanged:
-                          (value) => setState(() {
-                            _nomUsuariController.text = value.trim();
-                            usuari =
-                                "${value.trim() != "" ? value : "usuari"}@${_hostController.text.trim() != '' ? _hostController.text : 'servidor.com'}";
-                          }),
                     ),
-                    SizedBox(height: 10),
-                    TextField(
-                      controller: _hostController,
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(),
-                        labelText: 'Servidor',
-                        hintText: 'servidor.com',
-                      ),
-                      onChanged:
-                          (value) => setState(() {
-                            _hostController.text = value.trim();
-                            usuari =
-                                "${_nomUsuariController.text.trim() != "" ? _nomUsuariController.text : "usuari"}@${value.trim() != '' ? value : 'servidor.com'}";
-                          }),
-                    ),
-                    SizedBox(height: 10),
-                    Text("Usuari: $usuari"),
                     SizedBox(height: 10),
                     TextField(
                       controller: _contrasenyaController,
@@ -338,11 +331,7 @@ class _MyHomePageState extends State<MyHomePage>
               SizedBox(height: 10),
               ElevatedButton(
                 onPressed: () async {
-                  if (connectionStatus == 'Autenticat') {
-                    await disconnectXMPP();
-                  } else {
-                    await connect();
-                  }
+                  checkConnection();
                 },
                 child: Text(
                   connectionStatus == 'Autenticat'
@@ -385,44 +374,22 @@ class _MyHomePageState extends State<MyHomePage>
                 child: Column(
                   children: [
                     TextField(
-                      controller: _nomDestinatariController,
+                      keyboardType: TextInputType.emailAddress,
+                      controller: _destinatariController,
                       decoration: const InputDecoration(
                         border: OutlineInputBorder(),
                         labelText: 'Nom del destinatari',
-                        hintText: 'destinatari',
+                        hintText: 'destinatari@servidor.com',
                       ),
-                      onChanged:
-                          (value) => setState(() {
-                            destinatari =
-                                _nomDestinatariController.text = value.trim();
-                            destinatari =
-                                "${value.trim() != "" ? value : "destinatari"}@${_serverDestinatariController.text.trim() != "" ? _serverDestinatariController.text : "servidor.com"}";
-                          }),
                     ),
                     SizedBox(height: 10),
-                    TextField(
-                      controller: _serverDestinatariController,
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                        labelText: 'Servidor del destinatari',
-                        hintText: 'servidor.com',
-                      ),
-                      onChanged:
-                          (value) => setState(() {
-                            _serverDestinatariController.text = value.trim();
-                            destinatari =
-                                "${_nomDestinatariController.text.trim() != "" ? _nomDestinatariController.text : "destinatari"}@${value.trim() != '' ? value : 'servidor.com'}";
-                          }),
-                    ),
-                    Text('Destinatari: $destinatari'),
                   ],
                 ),
               ),
               ElevatedButton(
                 child: Text('Chat'),
                 onPressed: () {
-                  if ((_nomDestinatariController.text.trim().isEmpty ||
-                          _serverDestinatariController.text.trim().isEmpty) &&
+                  if (_destinatariController.text.trim().isEmpty &&
                       connectionStatus == 'Autenticat') {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
@@ -439,7 +406,7 @@ class _MyHomePageState extends State<MyHomePage>
                             xmpp: flutterXmpp,
                             presenceType: presenceType,
                             presenceMode: presenceMode,
-                            destinatari: destinatari, // Passa l'objecte XMPP
+                            destinatari: _nomUsuariController.text, // Passa l'objecte XMPP
                           ),
                     ),
                   );

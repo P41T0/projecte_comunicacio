@@ -150,14 +150,27 @@ class _MyHomePageState extends State<MyHomePage>
         case XmppConnectionState.authenticated:
           connectionStatus = 'Autenticat'; // Connexió exitosa
           userSessionStarted = true;
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text("Usuari autenticat")));
           break;
         case XmppConnectionState.disconnected:
           connectionStatus = 'Desconnectat'; // Connexió desconnectada
           userSessionStarted = false;
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text("Usuari desconnectat")));
           break;
         case XmppConnectionState.failed:
           connectionStatus = 'Error de connexió'; // Error durant la connexió
           userSessionStarted = false;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                "Error de connexió. Assegura't d'haver introduït les dades correctament",
+              ),
+            ),
+          );
           break;
         default:
           connectionStatus = 'Estat desconegut'; // Altres estats
@@ -244,17 +257,27 @@ class _MyHomePageState extends State<MyHomePage>
       setState(() {
         _nomUsuariController.text = _nomUsuariController.text.trim();
       });
-      if (_nomUsuariController.text.contains("@") &&
-          _nomUsuariController.text.contains(".")) {
-        connect();
-      } else {
+      if (_nomUsuariController.text.trim() == "") {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("No s'ha introduit cap usuari.")),
+        );
+        return;
+      } else if (_contrasenyaController.text.trim() == "") {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("No s'ha introduït cap contrasenya.")),
+        );
+        return;
+      } else if (!esUnCorreuElectr(_nomUsuariController.text)) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              "El nom d'usuari ha de contenir el caràcter '@' i el caràcter '.'.",
+              "L'usuari introduït no correspon a un correu electrònic",
             ),
           ),
         );
+        return;
+      } else {
+        connect();
       }
     }
   }
@@ -305,6 +328,11 @@ class _MyHomePageState extends State<MyHomePage>
     if (userSessionStarted) {
       changePresenceType(realPresenceType, realPresenceMode);
     }
+  }
+
+  bool esUnCorreuElectr(String email) {
+    final RegExp regex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    return regex.hasMatch(email);
   }
 
   @override
@@ -458,11 +486,29 @@ class _MyHomePageState extends State<MyHomePage>
               ElevatedButton(
                 child: Text('Chat'),
                 onPressed: () {
-                  if (_destinatariController.text.trim().isEmpty &&
-                      userSessionStarted == true) {
+                  if (userSessionStarted == false) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Inicia la sessió per a poder enviar missatges',
+                        ),
+                      ),
+                    );
+                    return;
+                  }
+                  if (_destinatariController.text.trim().isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text('El camp del destinatari està buit'),
+                      ),
+                    );
+                    return;
+                  } else if (!esUnCorreuElectr(_destinatariController.text)) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          "El text introduit en el destinatari no correspon a un correu electrònic",
+                        ),
                       ),
                     );
                     return;
@@ -475,9 +521,8 @@ class _MyHomePageState extends State<MyHomePage>
                             xmpp: flutterXmpp,
                             presenceType: realPresenceType,
                             presenceMode: realPresenceMode,
-                            destinatari:
-                                _destinatariController
-                                    .text, // Passa l'objecte XMPP
+                            destinatari: _destinatariController.text,
+                            // Passa l'objecte XMPP
                           ),
                     ),
                   );

@@ -402,6 +402,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Row(
           children: [
             CircleAvatar(

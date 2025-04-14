@@ -163,6 +163,9 @@ class _MyHomePageState extends State<MyHomePage>
           connectionStatus = 'Desconnectat'; // Connexió desconnectada
           _storage.write(key: "username", value: "");
           _storage.write(key: "password", value: "");
+          if(_contrasenyaController.text != ""){
+            _contrasenyaController.text = "";
+          }
           userSessionStarted = false;
           ScaffoldMessenger.of(
             context,

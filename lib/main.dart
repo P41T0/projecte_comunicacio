@@ -251,7 +251,7 @@ class _MyHomePageState extends State<MyHomePage>
   }
 
   void checkConnection() {
-    if (connectionStatus == 'Autenticat') {
+    if (connectionStatus == 'Autenticat' || connectionStatus == "Error de connexió") {
       disconnectXMPP();
     } else {
       setState(() {

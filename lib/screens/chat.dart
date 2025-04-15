@@ -185,7 +185,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
   }
 
   void enviaDadesAArduino(String dades) {
-    if (_port != null && arduinoConnected) {
+    if (arduinoConnected) {
       String fulldades = "$dades\r\n";
       _port!.write(Uint8List.fromList(fulldades.codeUnits));
     } else {
@@ -252,7 +252,6 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     _arduinoSubscription?.cancel();
 
     // Tanca el port USB si està obert
-    if (_port != null) {
       try {
         _port!.close();
         if (kDebugMode) {
@@ -263,7 +262,6 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
           print("Error en tancar el port USB: $e");
         }
       }
-    }
 
     // Assegura't que altres recursos es tanquen correctament
     super.dispose();
@@ -343,25 +341,23 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
   }
 
   void connectArduinoFunction() {
-    if (arduinoConnected == false) {
-      connectaAArduino();
-    } else {
-      if (_port != null) {
-        try {
-          _port!.close();
-          setState(() {
-            buttonMessage = 'Torna a connectar a la placa';
-            arduinoConnected = false;
-          });
+    try {
+      if (arduinoConnected == false) {
+        connectaAArduino();
+      } else {
+        _port!.close();
+        setState(() {
+          buttonMessage = 'Torna a connectar a la placa';
+          arduinoConnected = false;
+        });
 
-          if (kDebugMode) {
-            print("Port USB tancat correctament.");
-          }
-        } catch (e) {
-          if (kDebugMode) {
-            print("Error en tancar el port USB: $e");
-          }
+        if (kDebugMode) {
+          print("Port USB tancat correctament.");
         }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print("Error en tancar el port USB: $e");
       }
     }
   }

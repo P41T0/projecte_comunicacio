@@ -61,7 +61,7 @@ class _MyHomePageState extends State<MyHomePage>
   String connectionStatus = 'Desconnectat';
   bool userSessionStarted = false;
   static const _storage = FlutterSecureStorage();
-  String username = "";
+  String username_title = "";
   bool isAuthenticating = false;
   @override
   void initState() {
@@ -74,14 +74,17 @@ class _MyHomePageState extends State<MyHomePage>
   }
 
   Future<void> _attemptAutoLogin() async {
+    String username = "";
+    String password = "";
+
     if (await _storage.read(key: "username") != null) {
       username = (await _storage.read(key: "username"))!;
     }
-    String password = "";
     if (await _storage.read(key: "password") != null) {
       password = (await _storage.read(key: "password"))!;
     }
     if (username != "" && password != "") {
+      isAuthenticating = true;
       connect(username, password);
     }
   }
@@ -148,11 +151,11 @@ class _MyHomePageState extends State<MyHomePage>
   @override
   void onConnectionEvents(ConnectionEvent connectionEvent) {
     setState(() {
-      isAuthenticating = false;
       switch (connectionEvent.type) {
         case XmppConnectionState.authenticated:
           connectionStatus = 'Autenticat'; // Connexió exitosa
           userSessionStarted = true;
+          isAuthenticating = false;
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(SnackBar(content: Text("Usuari autenticat")));
@@ -160,10 +163,11 @@ class _MyHomePageState extends State<MyHomePage>
           _storage.write(key: "password", value: _contrasenyaController.text);
           break;
         case XmppConnectionState.disconnected:
+          isAuthenticating = false;
           connectionStatus = 'Desconnectat'; // Connexió desconnectada
           _storage.write(key: "username", value: "");
           _storage.write(key: "password", value: "");
-          if(_contrasenyaController.text != ""){
+          if (_contrasenyaController.text != "") {
             _contrasenyaController.text = "";
           }
           userSessionStarted = false;
@@ -225,6 +229,9 @@ class _MyHomePageState extends State<MyHomePage>
   String host = "exemple.com";
 
   Future<void> connect(String user, String password) async {
+    setState(() {
+      username_title = user;
+    });
     isAuthenticating = true;
     host = user.split("@")[1];
     final auth = {
@@ -401,9 +408,7 @@ class _MyHomePageState extends State<MyHomePage>
 
                 Text("Estat: $connectionStatus"),
                 if (isAuthenticating) // Mostra el CircularProgressIndicator si _isAuthenticating és true
-                  
-                    const Center(child: CircularProgressIndicator()),
-                  
+                  const Center(child: CircularProgressIndicator()),
               ],
             ),
           ),
@@ -428,8 +433,9 @@ class _MyHomePageState extends State<MyHomePage>
                   },
                   child: Text('Desconnectar'),
                 ),
-
-                Text("Estat: $connectionStatus"),
+                Text("Usuari"),
+                SizedBox(height: 15),
+                Text(username_title),
                 SizedBox(height: 15),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,

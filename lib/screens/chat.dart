@@ -107,7 +107,6 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
   UsbPort? _port;
   late final List<String> _data = [];
   Stream<String>? _stream;
-  String error = "";
   String buttonMessage = "Connecta a l'arduino";
   bool arduinoConnected = false;
   StreamSubscription<String>? _arduinoSubscription;
@@ -116,7 +115,9 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     List<UsbDevice> devices = await UsbSerial.listDevices();
     if (devices.isEmpty) {
       setState(() {
-        error = "No s'ha trobat cap dispositiu.";
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("No hi ha cap placa connectada")),
+        );
       });
       if (kDebugMode) {
         print("No s'ha trobat cap dispositiu USB.");
@@ -131,57 +132,53 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     }
 
     if (arduinoConnected == false) {
-      _port = await devices[0].create();
-      if (!await _port!.open()) {
-        setState(() {
-          error = "No s'ha pogut obrir el port.";
-        });
-        return;
-      }
-
-      await _port!.setDTR(true);
-      await _port!.setRTS(true);
-      await _port!.setPortParameters(
-        9600,
-        UsbPort.DATABITS_8,
-        UsbPort.STOPBITS_1,
-        UsbPort.PARITY_NONE,
-      );
-
-      _stream = _port!.inputStream!.map((data) {
-        return String.fromCharCodes(data);
-      });
-
-      _stream!.listen((String data) {
-        setState(() {
-          if (data != "") {
-            _data.add(data);
-          }
-          error = "";
-          buttonMessage = 'Desconnecta de ${devices[0].productName}';
-        });
-        arduinoConnected = true;
-      });
+      connecta(devices[0], false);
     } else {
-      if (devices.isNotEmpty) {
-        await _port!.close();
-        setState(() {
-          buttonMessage = 'Torna a connectar a ${devices[0].productName}';
-          if (_data.isNotEmpty) {
-            _data.removeRange(0, _data.length);
-          }
-        });
-        arduinoConnected = false;
-      } else {
-        setState(() {
-          buttonMessage = "Connecta a l'arduino";
-          if (_data.isNotEmpty) {
-            _data.removeRange(0, _data.length);
-          }
-        });
-        arduinoConnected = false;
-      }
+      connecta(null, false);
     }
+  }
+
+  Future<bool> connecta(device, desconnectant) async {
+    if (_arduinoSubscription != null) {
+      _arduinoSubscription!.cancel();
+      _arduinoSubscription = null;
+    }
+    if (_port != null) {
+      _port!.close();
+      _port = null;
+    }
+
+    if (device == null) {
+      arduinoConnected = false;
+      if (desconnectant == false) {
+        setState(() {
+          buttonMessage = "Torna a connectar al dispositiu";
+        });
+      }
+      return true;
+    }
+    _port = await device.create();
+    if (await (_port!.open()) != true) {
+      arduinoConnected = false;
+      return false;
+    }
+    await _port!.setDTR(true);
+    await _port!.setRTS(true);
+    await _port!.setPortParameters(
+      9600,
+      UsbPort.DATABITS_8,
+      UsbPort.STOPBITS_1,
+      UsbPort.PARITY_NONE,
+    );
+
+    _stream = _port!.inputStream!.map((data) {
+      return String.fromCharCodes(data);
+    });
+    arduinoConnected = true;
+    setState(() {
+      buttonMessage = 'Desconnecta de ${device.productName}';
+    });
+    return true;
   }
 
   void enviaDadesAArduino(String dades) {
@@ -189,9 +186,9 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
       String fulldades = "$dades\r\n";
       _port!.write(Uint8List.fromList(fulldades.codeUnits));
     } else {
-      setState(() {
-        error = "No s'ha pogut enviar dades a l'Arduino.";
-      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("No s'ha pogut enviar dades a l'Arduino.")),
+      );
     }
   }
 
@@ -252,80 +249,80 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     _arduinoSubscription?.cancel();
 
     // Tanca el port USB si està obert
-      try {
-        _port!.close();
-        if (kDebugMode) {
-          print("Port USB tancat correctament.");
-        }
-      } catch (e) {
-        if (kDebugMode) {
-          print("Error en tancar el port USB: $e");
-        }
-      }
-
-    // Assegura't que altres recursos es tanquen correctament
     super.dispose();
+    connecta(null, true);
   }
 
   Future<void> changePresenceType(presenceType, presenceMode) async {
     await widget.xmpp.changePresenceType(presenceType, presenceMode);
   }
 
+  Future<void> enviaMissatgeXMPP(resposta) async {
+    DateTime hora = DateTime.now();
+    String horaFormatada = "${hora.hour}:${hora.minute}";
+    // Afegeix el missatge processat a la llista local
+    setState(() {
+      Message missatge = Message(
+        hour: horaFormatada,
+        missatge: resposta, // Utilitza la resposta de l'Arduino
+        user: "me",
+        status: "enviant",
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        encrypted: false,
+      );
+      _missatges.add(missatge);
+    });
+
+    // Envia el missatge processat a través de XMPP
+    int id = DateTime.now().millisecondsSinceEpoch;
+    if (kDebugMode) {
+      print("missatge$resposta");
+    }
+    await widget.xmpp.sendMessageWithType(
+      widget.destinatari,
+      resposta, // Envia la resposta de l'Arduino
+      "$id",
+      DateTime.now().millisecondsSinceEpoch,
+    );
+
+    // Notifica que estàs actiu després d'enviar el missatge
+    enviarEstatEscrivint("active");
+
+    // Neteja el camp de text
+    _messageController.clear();
+    _desplacarAbaix();
+  }
+
   Future<void> _sendMessage() async {
     enviarEstatEscrivint("active");
     _missatgeEnviar = _messageController.text;
-    DateTime hora = DateTime.now();
-    String horaFormatada = "${hora.hour}:${hora.minute}";
 
     if ((_missatgeEnviar.trim()) != "") {
       try {
-        // Envia el missatge a l'Arduino
-        enviaDadesAArduino(_missatgeEnviar);
-
-        // Espera la resposta de l'Arduino
-        String? respostaArduino = await _esperaRespostaArduino();
-        if (respostaArduino == null) {
-          setState(() {
-            error = "No s'ha rebut cap resposta de l'Arduino.";
-          });
-          return;
+        if (arduinoConnected == true) {
+          // Envia el missatge a l'Arduino
+          enviaDadesAArduino(_missatgeEnviar);
+          // Espera la resposta de l'Arduino
+          String? respostaArduino = await _esperaRespostaArduino();
+          if (respostaArduino == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text("No s'ha rebut cap resposta de l'Arduino."),
+              ),
+            );
+            return;
+          }
+          enviaMissatgeXMPP(respostaArduino);
+        } else {
+          bool? resposta = await mostrarConfirmacio(context);
+          if (resposta! == true) {
+            enviaMissatgeXMPP(_messageController.text);
+          }
         }
-
-        // Afegeix el missatge processat a la llista local
-        setState(() {
-          Message missatge = Message(
-            hour: horaFormatada,
-            missatge: respostaArduino, // Utilitza la resposta de l'Arduino
-            user: "me",
-            status: "enviant",
-            id: DateTime.now().millisecondsSinceEpoch.toString(),
-            encrypted: false,
-          );
-          _missatges.add(missatge);
-        });
-
-        // Envia el missatge processat a través de XMPP
-        int id = DateTime.now().millisecondsSinceEpoch;
-        if (kDebugMode) {
-          print("missatge$respostaArduino");
-        }
-        await widget.xmpp.sendMessageWithType(
-          widget.destinatari,
-          respostaArduino, // Envia la resposta de l'Arduino
-          "$id",
-          DateTime.now().millisecondsSinceEpoch,
-        );
-
-        // Notifica que estàs actiu després d'enviar el missatge
-        enviarEstatEscrivint("active");
-
-        // Neteja el camp de text
-        _messageController.clear();
-        _desplacarAbaix();
       } catch (e) {
-        setState(() {
-          error = "Error en enviar el missatge: $e";
-        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error en enviar el missatge: $e")),
+        );
       }
     }
   }
@@ -364,203 +361,77 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
 
   void _desencriptarMissatge(int index) async {
     try {
-      // Envia el missatge xifrat a l'Arduino
-      enviaDadesAArduino(_missatges[index].missatge);
-
       // Espera la resposta desencriptada de l'Arduino
-      String? respostaArduino = await _esperaRespostaArduino();
-      if (respostaArduino == null) {
+      if (arduinoConnected == true) {
+        // Envia el missatge xifrat a l'Arduino
+        enviaDadesAArduino(_missatges[index].missatge);
+        String? respostaArduino = await _esperaRespostaArduino();
+        if (respostaArduino == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("No s'ha rebut cap resposta de l'Arduino.")),
+          );
+          return;
+        }
+
+        // Actualitza el contingut del missatge amb la resposta desencriptada
         setState(() {
-          error = "No s'ha rebut cap resposta de l'Arduino.";
+          _missatges[index].missatge = respostaArduino;
+          _missatges[index].encrypted =
+              false; // Marca el missatge com a desencriptat
         });
-        return;
-      }
 
-      // Actualitza el contingut del missatge amb la resposta desencriptada
-      setState(() {
-        _missatges[index].missatge = respostaArduino;
-        _missatges[index].encrypted =
-            false; // Marca el missatge com a desencriptat
-      });
-
-      if (kDebugMode) {
-        print("Missatge desencriptat: ${_missatges[index].missatge}");
+        if (kDebugMode) {
+          print("Missatge desencriptat: ${_missatges[index].missatge}");
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              "No es pot desencriptar el missatge perquè la placa no està connectada",
+            ),
+          ),
+        );
       }
     } catch (e) {
-      setState(() {
-        error = "Error en desencriptar el missatge: $e";
-      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error en desencriptar el missatge $e")),
+      );
     }
   }
 
-  final _messageController = TextEditingController();
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Row(
-          children: [
-            CircleAvatar(
-              child: Text(
-                widget.destinatari[0].toUpperCase(),
-              ), // Inicial del destinatari
-            ),
-            SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(widget.destinatari, style: TextStyle(fontSize: 18)),
+  Future<bool?> mostrarConfirmacio(BuildContext context) async {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible:
+          false, // L'usuari ha de tocar un botó per tancar el diàleg
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Enviar el missatge sense encriptar'),
+          content: const SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
                 Text(
-                  estatDestinatari == "PresenceType.available"
-                      ? modeDestinatari == "PresenceMode.available"
-                          ? "Disponible"
-                          : modeDestinatari == "PresenceMode.unavailable"
-                          ? "Fora de línia"
-                          : modeDestinatari == "PresenceMode.dnd"
-                          ? "Ocupat"
-                          : modeDestinatari == "PresenceMode.away"
-                          ? "Absent"
-                          : modeDestinatari == "PresenceMode.xa"
-                          ? "Absent durant un temps"
-                          : "Estat desconegut"
-                      : "",
-                  style: TextStyle(
-                    fontSize: 14,
-                    color:
-                        modeDestinatari == "PresenceMode.available"
-                            ? Colors.green
-                            : modeDestinatari == "PresenceMode.unavailable"
-                            ? Colors.red
-                            : modeDestinatari == "PresenceMode.dnd"
-                            ? Colors.red
-                            : modeDestinatari == "PresenceMode.away"
-                            ? Colors.orange
-                            : Colors.grey,
-                  ),
+                  'No estàs connectat a la placa. Vols enviar el missatge sense encriptar?',
                 ),
               ],
             ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('No'),
+              onPressed: () {
+                Navigator.of(context).pop(false); // Retorna false si es prem No
+              },
+            ),
+            TextButton(
+              child: const Text('Sí'),
+              onPressed: () {
+                Navigator.of(context).pop(true); // Retorna true si es prem Sí
+              },
+            ),
           ],
-        ),
-      ),
-      body: Center(
-        child: Column(
-          children: <Widget>[
-            ElevatedButton(
-              onPressed: () => {connectArduinoFunction()},
-              child: Text(buttonMessage),
-            ),
-            Expanded(
-              child: ListView.builder(
-                controller: _scrollController,
-                itemCount: _missatges.length,
-                itemBuilder: (context, index) {
-                  return Align(
-                    alignment:
-                        _missatges[index].user == "me"
-                            ? Alignment.topRight
-                            : Alignment.topLeft,
-                    child: Card(
-                      child: Container(
-                        alignment: Alignment.center,
-                        width: MediaQuery.of(context).size.width * 0.75,
-                        child: ListTile(
-                          tileColor:
-                              _missatges[index].user == "other"
-                                  ? Colors.orange[100]
-                                  : Colors.orange[50],
-                          title: Text(
-                            _missatges[index].missatge,
-                            style: TextStyle(
-                              fontStyle:
-                                  _missatges[index].encrypted
-                                      ? FontStyle.italic
-                                      : FontStyle.normal,
-                              color:
-                                  _missatges[index].encrypted
-                                      ? Colors.grey
-                                      : Colors.black,
-                            ),
-                          ),
-                          subtitle:
-                              _missatges[index].user == "me"
-                                  ? Row(
-                                    children: [
-                                      Text(_missatges[index].hour),
-                                      SizedBox(width: 10),
-                                      Text(_missatges[index].status),
-                                    ],
-                                  )
-                                  : Row(
-                                    children: [
-                                      Text(_missatges[index].hour),
-                                      SizedBox(width: 10),
-                                      // Mostra el botó només si el missatge està xifrat
-                                      if (_missatges[index].encrypted)
-                                        ElevatedButton(
-                                          onPressed:
-                                              () =>
-                                                  _desencriptarMissatge(index),
-                                          child: Text('Desencriptar'),
-                                        ),
-                                    ],
-                                  ),
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-            Column(
-              children: [
-                Text(estatXatDestinatari),
-                SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                      width: 200,
-                      child: TextField(
-                        controller: _messageController,
-                        decoration: const InputDecoration(
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                          border: OutlineInputBorder(),
-                          labelText: "Escriu un missatge",
-                        ),
-                        onChanged: (text) {
-                          if (text.isNotEmpty) {
-                            enviarEstatEscrivint(
-                              "composing",
-                            ); // Notifica que estàs escrivint
-                          } else {
-                            enviarEstatEscrivint(
-                              "paused",
-                            ); // Notifica que has deixat d'escriure
-                          }
-                        },
-                        onEditingComplete: () {
-                          _sendMessage();
-                          // Notifica que estàs actiu
-                        },
-                      ),
-                    ),
-                    ElevatedButton(
-                      onPressed: _sendMessage,
-                      child: Text('Enviar'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            SizedBox(height: 20),
-          ],
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -583,7 +454,10 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
           }
         }
       }
-      if ((messageChat.type)?.toLowerCase() == "chatstate") {
+      if (kDebugMode) {
+        print("tipus   ${messageChat.type}");
+      }
+      if ((messageChat.type)?.toLowerCase() == "message") {
         if (messageChat.chatStateType == "composing") {
           setState(() {
             estatXatDestinatari = "${widget.destinatari} esta escrivint...";
@@ -609,7 +483,8 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
             "estatus: ${messageChat.chatStateType} ${messageChat.toString()}",
           );
         }
-        if (messageChat.chatStateType == "active") {
+        if (messageChat.chatStateType == "active" ||
+            messageChat.chatStateType == "") {
           setState(() {
             estatXatDestinatari = "";
           });
@@ -627,6 +502,17 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
               ),
             );
             sendReceipt(messageChat);
+            if (arduinoConnected) {
+              _desencriptarMissatge(_missatges.length - 1);
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    "No s'ha pogut desencriptar el missatge automaticament perquè la placa no està connectada",
+                  ),
+                ),
+              );
+            }
           }
         }
       }
@@ -748,8 +634,180 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
       print("Sol·licitud de subscripció enviada a ${widget.destinatari}");
     }
   }
-}
 
-String normalitzarJid(String jid) {
-  return jid.split('/')[0]; // Retorna només la part abans de la barra
+  final _messageController = TextEditingController();
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: Row(
+          children: [
+            CircleAvatar(
+              child: Text(
+                widget.destinatari[0].toUpperCase(),
+              ), // Inicial del destinatari
+            ),
+            SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  (widget.destinatari.toUpperCase()).length < 25
+                      ? widget.destinatari
+                      : "${widget.destinatari.substring(0, 23)}...",
+                  style: TextStyle(fontSize: 18),
+                ),
+                Text(
+                  estatDestinatari == "PresenceType.available"
+                      ? modeDestinatari == "PresenceMode.available"
+                          ? "Disponible"
+                          : modeDestinatari == "PresenceMode.unavailable"
+                          ? "Fora de línia"
+                          : modeDestinatari == "PresenceMode.dnd"
+                          ? "Ocupat"
+                          : modeDestinatari == "PresenceMode.away"
+                          ? "Absent"
+                          : modeDestinatari == "PresenceMode.xa"
+                          ? "Absent durant un temps"
+                          : "Estat desconegut"
+                      : "",
+                  style: TextStyle(
+                    fontSize: 14,
+                    color:
+                        modeDestinatari == "PresenceMode.available"
+                            ? Colors.green
+                            : modeDestinatari == "PresenceMode.unavailable"
+                            ? Colors.red
+                            : modeDestinatari == "PresenceMode.dnd"
+                            ? Colors.red
+                            : modeDestinatari == "PresenceMode.away"
+                            ? Colors.orange
+                            : Colors.grey,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+      body: Center(
+        child: Column(
+          children: <Widget>[
+            ElevatedButton(
+              onPressed: () => {connectArduinoFunction()},
+              child: Text(buttonMessage),
+            ),
+            Expanded(
+              child: ListView.builder(
+                controller: _scrollController,
+                itemCount: _missatges.length,
+                itemBuilder: (context, index) {
+                  return Align(
+                    alignment:
+                        _missatges[index].user == "me"
+                            ? Alignment.topRight
+                            : Alignment.topLeft,
+                    child: Card(
+                      child: Container(
+                        alignment: Alignment.center,
+                        width: MediaQuery.of(context).size.width * 0.75,
+                        child: ListTile(
+                          tileColor:
+                              _missatges[index].user == "me"
+                                  ? Colors.orange[50]
+                                  : Colors.orange[100],
+                          title: Text(
+                            _missatges[index].missatge,
+                            style: TextStyle(
+                              fontStyle:
+                                  _missatges[index].encrypted
+                                      ? FontStyle.italic
+                                      : FontStyle.normal,
+                              color:
+                                  _missatges[index].encrypted
+                                      ? Colors.grey
+                                      : Colors.black,
+                            ),
+                          ),
+                          subtitle:
+                              _missatges[index].user == "me"
+                                  ? Row(
+                                    children: [
+                                      Text(_missatges[index].hour),
+                                      SizedBox(width: 10),
+                                      Text(_missatges[index].status),
+                                    ],
+                                  )
+                                  : Row(
+                                    children: [
+                                      Text(_missatges[index].hour),
+                                      SizedBox(width: 10),
+                                      // Mostra el botó només si el missatge està xifrat
+                                      if (_missatges[index].encrypted)
+                                        ElevatedButton(
+                                          onPressed:
+                                              () =>
+                                                  _desencriptarMissatge(index),
+                                          child: Text('Desencriptar'),
+                                        ),
+                                    ],
+                                  ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            Column(
+              children: [
+                Text(estatXatDestinatari),
+                SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 200,
+                      child: TextField(
+                        controller: _messageController,
+                        decoration: const InputDecoration(
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          border: OutlineInputBorder(),
+                          labelText: "Escriu un missatge",
+                        ),
+                        onChanged: (text) {
+                          if (text.isNotEmpty) {
+                            enviarEstatEscrivint(
+                              "composing",
+                            ); // Notifica que estàs escrivint
+                          } else {
+                            enviarEstatEscrivint(
+                              "paused",
+                            ); // Notifica que has deixat d'escriure
+                          }
+                        },
+                        onEditingComplete: () {
+                          _sendMessage();
+                          // Notifica que estàs actiu
+                        },
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed: _sendMessage,
+                      child: Text('Enviar'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
 }

@@ -625,6 +625,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Row(
@@ -690,41 +691,34 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
                 controller: _scrollController,
                 itemCount: _missatges.length,
                 itemBuilder: (context, index) {
+                  bool itsMe = _missatges[index].user == "me" ? true : false;
                   return Align(
                     alignment:
-                        _missatges[index].user == "me"
-                            ? Alignment.centerRight
-                            : Alignment.centerLeft,
+                        itsMe ? Alignment.centerRight : Alignment.centerLeft,
                     child: Card(
                       child: Container(
                         margin: EdgeInsets.symmetric(
                           vertical: 5,
                           horizontal: 5,
                         ),
-                        padding: EdgeInsets.all(13),
+                        padding: EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color:
-                              _missatges[index].user == "me"
-                                  ? Colors.orange[100]
-                                  : Colors.orange[300],
+                              itsMe ? Colors.orange[100] : Colors.orange[200],
                           borderRadius: BorderRadius.only(
                             topLeft: Radius.circular(20),
                             topRight: Radius.circular(20),
                             bottomLeft:
-                                _missatges[index].user == "me"
-                                    ? Radius.circular(20)
-                                    : Radius.zero,
+                                itsMe ? Radius.circular(20) : Radius.zero,
                             bottomRight:
-                                _missatges[index].user == "me"
-                                    ? Radius.zero
-                                    : Radius.circular(20),
+                                itsMe ? Radius.zero : Radius.circular(20),
                           ),
                         ),
                         alignment: Alignment.center,
                         width: MediaQuery.of(context).size.width * 0.75,
                         child: Column(
                           crossAxisAlignment:
-                              _missatges[index].user == "me"
+                              itsMe
                                   ? CrossAxisAlignment.end
                                   : CrossAxisAlignment.start,
                           children: [

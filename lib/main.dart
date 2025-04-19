@@ -360,38 +360,39 @@ class _MyHomePageState extends State<MyHomePage>
         resizeToAvoidBottomInset: true,
         appBar: AppBar(
           backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-          title: Text(widget.title),
+          title: Text(
+            widget.title,
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
         ),
-        body: SingleChildScrollView(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minHeight: MediaQuery.of(context).size.height,
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                spacing: 20,
-                children: <Widget>[
-                  Text(
-                    'Introdueix les dades de connexió',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  SizedBox(
-                    width: 300,
-                    child: TextField(
-                      keyboardType: TextInputType.emailAddress,
-                      controller: _nomUsuariController,
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(),
-                        labelText: 'Usuari',
-                        hintText: 'usuari@servidor.com',
-                      ),
+        body: Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: MediaQuery.of(context).size.height,
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              spacing: 20,
+              children: [
+                Text(
+                  'Introdueix les dades de connexió',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
+                ),
+                SizedBox(
+                  width: 300,
+                  child: TextField(
+                    keyboardType: TextInputType.emailAddress,
+                    controller: _nomUsuariController,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(),
+                      labelText: 'Usuari',
+                      hintText: 'usuari@servidor.com',
                     ),
                   ),
-                  SizedBox(
-                    width: 300,
-                    child:
-                  TextField(
+                ),
+                SizedBox(
+                  width: 300,
+                  child: TextField(
                     controller: _contrasenyaController,
                     decoration: InputDecoration(
                       border: OutlineInputBorder(),
@@ -400,21 +401,26 @@ class _MyHomePageState extends State<MyHomePage>
                     ),
                     obscureText: true,
                   ),
-                  ),
-                  ElevatedButton(
-                    onPressed: () async {
-                      checkConnection();
-                    },
-                    child: Text('Connectar'),
-                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    checkConnection();
+                  },
+                  child: Text('Connectar'),
+                ),
 
-                  Text("Estat: $connectionStatus"),
-                  if (isAuthenticating) // Mostra el CircularProgressIndicator si _isAuthenticating és true
-                    const Center(child: CircularProgressIndicator()),
-                ],
-              ),
+                Text(
+                  "Estat: $connectionStatus",
+                  style: TextStyle(
+                    fontStyle: FontStyle.italic,
+                    fontWeight: FontWeight.w400,
+                    fontSize: 16,
+                  ),
+                ),
+                if (isAuthenticating) // Mostra el CircularProgressIndicator si _isAuthenticating és true
+                  const Center(child: CircularProgressIndicator()),
+              ],
             ),
-            // This trailing comma makes auto-formatting nicer for build methods.
           ),
         ),
       );
@@ -425,127 +431,128 @@ class _MyHomePageState extends State<MyHomePage>
           backgroundColor: Theme.of(context).colorScheme.inversePrimary,
           title: Text(widget.title),
         ),
-        body: SingleChildScrollView(
-          child: Center(
-            child: Column(
-              spacing: 10,
+        body: Column(
+          spacing: 10,
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            ElevatedButton(
+              onPressed: () async {
+                checkConnection();
+              },
+              child: Text('Desconnectar'),
+            ),
+            Text(
+              "Usuari: $usernameTitle",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontStyle: FontStyle.italic,
+                fontSize: 20,
+              ),
+            ),
+            Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                ElevatedButton(
-                  onPressed: () async {
-                    checkConnection();
-                  },
-                  child: Text('Desconnectar'),
-                ),
-                Text("Usuari"),
-                Text(usernameTitle),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  spacing: 10,
-                  children: [
-                    Text("Visibilitat:"),
-                    DropdownButton(
-                      value: presenceType,
-                      items:
-                          presenceTypeItems.map((String items) {
-                            return DropdownMenuItem(
-                              value: items,
-                              child: Text(items),
-                            );
-                          }).toList(),
-                      onChanged: (val) {
-                        setState(() {
-                          presenceType = val.toString();
-                        });
-                        changeTypeDropdown(presenceType);
-                      },
-                    ),
-                  ],
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  spacing: 10,
-                  children: [
-                    Text("Estat:"),
-                    DropdownButton(
-                      value: presenceMode,
-                      items:
-                          presenceModeitems.map((String items) {
-                            return DropdownMenuItem(
-                              value: items,
-                              child: Text(items),
-                            );
-                          }).toList(),
-                      onChanged: (val) {
-                        setState(() {
-                          presenceMode = val.toString();
-                          changeModeDropdown(val.toString());
-                        });
-                      },
-                    ),
-                  ],
-                ),
-                SizedBox(
-                  width: 300,
-                  child: TextField(
-                    keyboardType: TextInputType.emailAddress,
-                    controller: _destinatariController,
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      labelText: 'Nom del destinatari',
-                      hintText: 'destinatari@servidor.com',
-                    ),
-                  ),
-                ),
-                ElevatedButton(
-                  child: Text('Chat'),
-                  onPressed: () {
-                    if (userSessionStarted == false) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'Inicia la sessió per a poder enviar missatges',
-                          ),
-                        ),
-                      );
-                      return;
-                    }
-                    if (_destinatariController.text.trim().isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('El camp del destinatari està buit'),
-                        ),
-                      );
-                      return;
-                    } else if (!esUnCorreuElectr(_destinatariController.text)) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            "El text introduit en el destinatari no correspon a un correu electrònic",
-                          ),
-                        ),
-                      );
-                      return;
-                    }
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder:
-                            (context) => ChatPage(
-                              xmpp: flutterXmpp,
-                              presenceType: realPresenceType,
-                              presenceMode: realPresenceMode,
-                              destinatari: _destinatariController.text,
-                              // Passa l'objecte XMPP
-                            ),
-                      ),
-                    );
+              spacing: 10,
+              children: [
+                Text("Visibilitat:"),
+                DropdownButton(
+                  value: presenceType,
+                  items:
+                      presenceTypeItems.map((String items) {
+                        return DropdownMenuItem(
+                          value: items,
+                          child: Text(items),
+                        );
+                      }).toList(),
+                  onChanged: (val) {
+                    setState(() {
+                      presenceType = val.toString();
+                    });
+                    changeTypeDropdown(presenceType);
                   },
                 ),
               ],
             ),
-          ),
-          // This trailing comma makes auto-formatting nicer for build methods.
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              spacing: 10,
+              children: [
+                Text("Estat:"),
+                DropdownButton(
+                  value: presenceMode,
+                  items:
+                      presenceModeitems.map((String items) {
+                        return DropdownMenuItem(
+                          value: items,
+                          child: Text(items),
+                        );
+                      }).toList(),
+                  onChanged: (val) {
+                    setState(() {
+                      presenceMode = val.toString();
+                      changeModeDropdown(val.toString());
+                    });
+                  },
+                ),
+              ],
+            ),
+            SizedBox(
+              width: 300,
+              child: TextField(
+                keyboardType: TextInputType.emailAddress,
+                controller: _destinatariController,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  labelText: 'Nom del destinatari',
+                  hintText: 'destinatari@servidor.com',
+                ),
+              ),
+            ),
+            ElevatedButton(
+              child: Text('Chat'),
+              onPressed: () {
+                if (userSessionStarted == false) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Inicia la sessió per a poder enviar missatges',
+                      ),
+                    ),
+                  );
+                  return;
+                }
+                if (_destinatariController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('El camp del destinatari està buit'),
+                    ),
+                  );
+                  return;
+                } else if (!esUnCorreuElectr(_destinatariController.text)) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        "El text introduit en el destinatari no correspon a un correu electrònic",
+                      ),
+                    ),
+                  );
+                  return;
+                }
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder:
+                        (context) => ChatPage(
+                          xmpp: flutterXmpp,
+                          presenceType: realPresenceType,
+                          presenceMode: realPresenceMode,
+                          destinatari: _destinatariController.text,
+                          // Passa l'objecte XMPP
+                        ),
+                  ),
+                );
+              },
+            ),
+          ],
         ),
       );
     }

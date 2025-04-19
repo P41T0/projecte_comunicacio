@@ -256,22 +256,24 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
   Future<void> changePresenceType(presenceType, presenceMode) async {
     await widget.xmpp.changePresenceType(presenceType, presenceMode);
   }
-
-  Future<void> enviaMissatgeXMPP(resposta) async {
+  setMissatge(resposta, user, encripted){
     DateTime hora = DateTime.now();
-    String horaFormatada = "${hora.hour}:${hora.minute}";
-    // Afegeix el missatge processat a la llista local
+    String horaFormatada = "${hora.hour}:${hora.minute < 10 ? "0${hora.minute}" : hora.minute}";
     setState(() {
       Message missatge = Message(
         hour: horaFormatada,
         missatge: resposta, // Utilitza la resposta de l'Arduino
-        user: "me",
+        user: user,
         status: "enviant",
         id: DateTime.now().millisecondsSinceEpoch.toString(),
-        encrypted: false,
+        encrypted: encripted,
       );
       _missatges.add(missatge);
     });
+  }
+  Future<void> enviaMissatgeXMPP(resposta) async {
+    // Afegeix el missatge processat a la llista local
+    setMissatge(resposta, "me", false);
 
     // Envia el missatge processat a través de XMPP
     int id = DateTime.now().millisecondsSinceEpoch;
@@ -490,17 +492,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
           });
           if (messageChat.body != null && messageChat.body!.trim().isNotEmpty) {
             // Afegeix el missatge rebut a la llista de missatges
-            _missatges.add(
-              Message(
-                hour: "${DateTime.now().hour}:${DateTime.now().minute}",
-                missatge: messageChat.body!, // Contingut del missatge
-                user: messageChat.from.toString(),
-                // JID de l'usuari que envia el missatge
-                id: messageChat.id.toString(), // ID del missatge
-                status: "enviat", // Estat del missatge
-                encrypted: true,
-              ),
-            );
+            setMissatge(messageChat.body,messageChat.from.toString(), true);
             sendReceipt(messageChat);
             if (arduinoConnected) {
               _desencriptarMissatge(_missatges.length - 1);
@@ -599,19 +591,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
   }
 
   void onNewMessage(message) {
-    setState(() {
       // Afegeix el missatge rebut a la llista de missatges
-      _missatges.add(
-        Message(
-          hour: "${DateTime.now().hour}:${DateTime.now().minute}",
-          missatge: message.body, // Contingut del missatge
-          user: "other", // Marca el missatge com a rebut
-          id: message.id, // ID del missatge
-          status: "enviat", // Estat del missatge
-          encrypted: true,
-        ),
-      );
-    });
     // Desplaça la vista cap avall per mostrar el nou missatge
     _desplacarAbaix();
   }
@@ -642,13 +622,13 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Row(
+          spacing: 10,
           children: [
             CircleAvatar(
               child: Text(
                 widget.destinatari[0].toUpperCase(),
               ), // Inicial del destinatari
             ),
-            SizedBox(width: 10),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -693,6 +673,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
       ),
       body: Center(
         child: Column(
+          spacing: 10,
           children: <Widget>[
             ElevatedButton(
               onPressed: () => {connectArduinoFunction()},
@@ -706,8 +687,8 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
                   return Align(
                     alignment:
                         _missatges[index].user == "me"
-                            ? Alignment.topRight
-                            : Alignment.topLeft,
+                            ? Alignment.centerRight
+                            : Alignment.centerLeft,
                     child: Card(
                       child: Container(
                         alignment: Alignment.center,
@@ -733,16 +714,16 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
                           subtitle:
                               _missatges[index].user == "me"
                                   ? Row(
+                                    spacing: 10,
                                     children: [
                                       Text(_missatges[index].hour),
-                                      SizedBox(width: 10),
-                                      Text(_missatges[index].status),
+                                      Icon(_missatges[index].status == "enviat" ? Icons.done_all : Icons.done),
                                     ],
                                   )
                                   : Row(
+                                    spacing: 10,
                                     children: [
                                       Text(_missatges[index].hour),
-                                      SizedBox(width: 10),
                                       // Mostra el botó només si el missatge està xifrat
                                       if (_missatges[index].encrypted)
                                         ElevatedButton(
@@ -761,14 +742,16 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
               ),
             ),
             Column(
+              
               children: [
                 Text(estatXatDestinatari),
                 SizedBox(height: 10),
                 Row(
+                  spacing: 15,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     SizedBox(
-                      width: 200,
+                      width: 225,
                       child: TextField(
                         controller: _messageController,
                         decoration: const InputDecoration(

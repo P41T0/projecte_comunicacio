@@ -37,7 +37,7 @@ dependencies:
   url_launcher: ^6.3.1
   share_plus: ^10.1.4
   usb_serial: ^0.5.2
-  permission_handler: ^11.4.0
+  permission_handler: ^12.0.0+1
   xmpp_plugin: ^2.2.13
   device_info_plus: ^11.3.3
   path_provider: ^2.1.5

@@ -119,16 +119,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
           SnackBar(content: Text("No hi ha cap placa connectada")),
         );
       });
-      if (kDebugMode) {
-        print("No s'ha trobat cap dispositiu USB.");
-      }
       return;
-    }
-
-    for (var device in devices) {
-      if (kDebugMode) {
-        print("Dispositiu detectat: ${device.productName}");
-      }
     }
 
     if (arduinoConnected == false) {
@@ -256,9 +247,11 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
   Future<void> changePresenceType(presenceType, presenceMode) async {
     await widget.xmpp.changePresenceType(presenceType, presenceMode);
   }
-  setMissatge(resposta, user, encripted){
+
+  setMissatge(resposta, user, encripted) {
     DateTime hora = DateTime.now();
-    String horaFormatada = "${hora.hour}:${hora.minute < 10 ? "0${hora.minute}" : hora.minute}";
+    String horaFormatada =
+        "${hora.hour}:${hora.minute < 10 ? "0${hora.minute}" : hora.minute}";
     setState(() {
       Message missatge = Message(
         hour: horaFormatada,
@@ -271,6 +264,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
       _missatges.add(missatge);
     });
   }
+
   Future<void> enviaMissatgeXMPP(resposta) async {
     // Afegeix el missatge processat a la llista local
     setMissatge(resposta, "me", false);
@@ -295,7 +289,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     _desplacarAbaix();
   }
 
-  Future<void> _sendMessage() async {
+  Future<void> _sendMessage(context) async {
     enviarEstatEscrivint("active");
     _missatgeEnviar = _messageController.text;
 
@@ -309,9 +303,14 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
           if (respostaArduino == null) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text("No s'ha rebut cap resposta de l'Arduino."),
+                content: Text(
+                  "No s'ha rebut cap resposta de l'Arduino, desconnectant.",
+                ),
               ),
             );
+            if (arduinoConnected == true) {
+              connecta(null, false);
+            }
             return;
           }
           enviaMissatgeXMPP(respostaArduino);
@@ -361,7 +360,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     }
   }
 
-  void _desencriptarMissatge(int index) async {
+  void _desencriptarMissatge(int index, context) async {
     try {
       // Espera la resposta desencriptada de l'Arduino
       if (arduinoConnected == true) {
@@ -370,8 +369,15 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
         String? respostaArduino = await _esperaRespostaArduino();
         if (respostaArduino == null) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("No s'ha rebut cap resposta de l'Arduino.")),
+            SnackBar(
+              content: Text(
+                "No s'ha rebut cap resposta de l'Arduino. Desconnectant",
+              ),
+            ),
           );
+          if (arduinoConnected == true) {
+            connecta(null, false);
+          }
           return;
         }
 
@@ -492,10 +498,10 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
           });
           if (messageChat.body != null && messageChat.body!.trim().isNotEmpty) {
             // Afegeix el missatge rebut a la llista de missatges
-            setMissatge(messageChat.body,messageChat.from.toString(), true);
+            setMissatge(messageChat.body, messageChat.from.toString(), true);
             sendReceipt(messageChat);
             if (arduinoConnected) {
-              _desencriptarMissatge(_missatges.length - 1);
+              _desencriptarMissatge(_missatges.length - 1, context);
             } else {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -591,7 +597,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
   }
 
   void onNewMessage(message) {
-      // Afegeix el missatge rebut a la llista de missatges
+    // Afegeix el missatge rebut a la llista de missatges
     // Desplaça la vista cap avall per mostrar el nou missatge
     _desplacarAbaix();
   }
@@ -691,49 +697,81 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
                             : Alignment.centerLeft,
                     child: Card(
                       child: Container(
+                        margin: EdgeInsets.symmetric(
+                          vertical: 5,
+                          horizontal: 5,
+                        ),
+                        padding: EdgeInsets.all(13),
+                        decoration: BoxDecoration(
+                          color:
+                              _missatges[index].user == "me"
+                                  ? Colors.orange[100]
+                                  : Colors.orange[300],
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(20),
+                            topRight: Radius.circular(20),
+                            bottomLeft:
+                                _missatges[index].user == "me"
+                                    ? Radius.circular(20)
+                                    : Radius.zero,
+                            bottomRight:
+                                _missatges[index].user == "me"
+                                    ? Radius.zero
+                                    : Radius.circular(20),
+                          ),
+                        ),
                         alignment: Alignment.center,
                         width: MediaQuery.of(context).size.width * 0.75,
-                        child: ListTile(
-                          tileColor:
+                        child: Column(
+                          crossAxisAlignment:
                               _missatges[index].user == "me"
-                                  ? Colors.orange[50]
-                                  : Colors.orange[100],
-                          title: Text(
-                            _missatges[index].missatge,
-                            style: TextStyle(
-                              fontStyle:
-                                  _missatges[index].encrypted
-                                      ? FontStyle.italic
-                                      : FontStyle.normal,
-                              color:
-                                  _missatges[index].encrypted
-                                      ? Colors.grey
-                                      : Colors.black,
+                                  ? CrossAxisAlignment.end
+                                  : CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _missatges[index].missatge,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w500,
+                                fontStyle:
+                                    _missatges[index].encrypted
+                                        ? FontStyle.italic
+                                        : FontStyle.normal,
+                                color:
+                                    _missatges[index].encrypted
+                                        ? Colors.grey
+                                        : Colors.black,
+                              ),
                             ),
-                          ),
-                          subtitle:
-                              _missatges[index].user == "me"
-                                  ? Row(
-                                    spacing: 10,
-                                    children: [
-                                      Text(_missatges[index].hour),
-                                      Icon(_missatges[index].status == "enviat" ? Icons.done_all : Icons.done),
-                                    ],
-                                  )
-                                  : Row(
-                                    spacing: 10,
-                                    children: [
-                                      Text(_missatges[index].hour),
-                                      // Mostra el botó només si el missatge està xifrat
-                                      if (_missatges[index].encrypted)
-                                        ElevatedButton(
-                                          onPressed:
-                                              () =>
-                                                  _desencriptarMissatge(index),
-                                          child: Text('Desencriptar'),
+
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              spacing: 10,
+                              children: [
+                                if (_missatges[index].encrypted)
+                                  ElevatedButton(
+                                    onPressed:
+                                        () => _desencriptarMissatge(
+                                          index,
+                                          context,
                                         ),
-                                    ],
+                                    child: Text('Desencriptar'),
                                   ),
+                                Text(
+                                  _missatges[index].hour,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey[800],
+                                  ),
+                                ),
+                                if (_missatges[index].user == "me")
+                                  Icon(
+                                    _missatges[index].status == "enviat"
+                                        ? Icons.done_all
+                                        : Icons.done,
+                                  ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -742,7 +780,6 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
               ),
             ),
             Column(
-              
               children: [
                 Text(estatXatDestinatari),
                 SizedBox(height: 10),
@@ -774,13 +811,13 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
                           }
                         },
                         onEditingComplete: () {
-                          _sendMessage();
+                          _sendMessage(context);
                           // Notifica que estàs actiu
                         },
                       ),
                     ),
                     ElevatedButton(
-                      onPressed: _sendMessage,
+                      onPressed: () => _sendMessage(context),
                       child: Text('Enviar'),
                     ),
                   ],

@@ -61,7 +61,7 @@ class _MyHomePageState extends State<MyHomePage>
   String connectionStatus = 'Desconnectat';
   bool userSessionStarted = false;
   static const _storage = FlutterSecureStorage();
-  String username_title = "";
+  String usernameTitle = "";
   bool isAuthenticating = false;
   @override
   void initState() {
@@ -230,7 +230,7 @@ class _MyHomePageState extends State<MyHomePage>
 
   Future<void> connect(String user, String password) async {
     setState(() {
-      username_title = user;
+      usernameTitle = user;
     });
     isAuthenticating = true;
     host = user.split("@")[1];
@@ -364,55 +364,58 @@ class _MyHomePageState extends State<MyHomePage>
         ),
         body: SingleChildScrollView(
           child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                Text(
-                  'Introdueix les dades de connexió',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                SizedBox(height: 10),
-                SizedBox(
-                  width: 300,
-                  child: Column(
-                    children: [
-                      TextField(
-                        keyboardType: TextInputType.emailAddress,
-                        controller: _nomUsuariController,
-                        decoration: InputDecoration(
-                          border: OutlineInputBorder(),
-                          labelText: 'Usuari',
-                          hintText: 'usuari@servidor.com',
-                        ),
-                      ),
-                      SizedBox(height: 10),
-                      TextField(
-                        controller: _contrasenyaController,
-                        decoration: InputDecoration(
-                          border: OutlineInputBorder(),
-                          labelText: 'Contrasenya',
-                          hintText: '***********',
-                        ),
-                        obscureText: true,
-                      ),
-                    ],
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: MediaQuery.of(context).size.height,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                spacing: 20,
+                children: <Widget>[
+                  Text(
+                    'Introdueix les dades de connexió',
+                    style: Theme.of(context).textTheme.titleLarge,
                   ),
-                ),
-                SizedBox(height: 10),
-                ElevatedButton(
-                  onPressed: () async {
-                    checkConnection();
-                  },
-                  child: Text('Connectar'),
-                ),
+                  SizedBox(
+                    width: 300,
+                    child: TextField(
+                      keyboardType: TextInputType.emailAddress,
+                      controller: _nomUsuariController,
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'Usuari',
+                        hintText: 'usuari@servidor.com',
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 300,
+                    child:
+                  TextField(
+                    controller: _contrasenyaController,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(),
+                      labelText: 'Contrasenya',
+                      hintText: '***********',
+                    ),
+                    obscureText: true,
+                  ),
+                  ),
+                  ElevatedButton(
+                    onPressed: () async {
+                      checkConnection();
+                    },
+                    child: Text('Connectar'),
+                  ),
 
-                Text("Estat: $connectionStatus"),
-                if (isAuthenticating) // Mostra el CircularProgressIndicator si _isAuthenticating és true
-                  const Center(child: CircularProgressIndicator()),
-              ],
+                  Text("Estat: $connectionStatus"),
+                  if (isAuthenticating) // Mostra el CircularProgressIndicator si _isAuthenticating és true
+                    const Center(child: CircularProgressIndicator()),
+                ],
+              ),
             ),
+            // This trailing comma makes auto-formatting nicer for build methods.
           ),
-          // This trailing comma makes auto-formatting nicer for build methods.
         ),
       );
     } else {
@@ -425,6 +428,7 @@ class _MyHomePageState extends State<MyHomePage>
         body: SingleChildScrollView(
           child: Center(
             child: Column(
+              spacing: 10,
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
                 ElevatedButton(
@@ -434,14 +438,12 @@ class _MyHomePageState extends State<MyHomePage>
                   child: Text('Desconnectar'),
                 ),
                 Text("Usuari"),
-                SizedBox(height: 15),
-                Text(username_title),
-                SizedBox(height: 15),
+                Text(usernameTitle),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
+                  spacing: 10,
                   children: [
                     Text("Visibilitat:"),
-                    SizedBox(width: 10),
                     DropdownButton(
                       value: presenceType,
                       items:
@@ -460,12 +462,11 @@ class _MyHomePageState extends State<MyHomePage>
                     ),
                   ],
                 ),
-                SizedBox(height: 15),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
+                  spacing: 10,
                   children: [
                     Text("Estat:"),
-                    SizedBox(width: 10),
                     DropdownButton(
                       value: presenceMode,
                       items:
@@ -486,19 +487,14 @@ class _MyHomePageState extends State<MyHomePage>
                 ),
                 SizedBox(
                   width: 300,
-                  child: Column(
-                    children: [
-                      TextField(
-                        keyboardType: TextInputType.emailAddress,
-                        controller: _destinatariController,
-                        decoration: const InputDecoration(
-                          border: OutlineInputBorder(),
-                          labelText: 'Nom del destinatari',
-                          hintText: 'destinatari@servidor.com',
-                        ),
-                      ),
-                      SizedBox(height: 10),
-                    ],
+                  child: TextField(
+                    keyboardType: TextInputType.emailAddress,
+                    controller: _destinatariController,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      labelText: 'Nom del destinatari',
+                      hintText: 'destinatari@servidor.com',
+                    ),
                   ),
                 ),
                 ElevatedButton(

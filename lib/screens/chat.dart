@@ -7,7 +7,7 @@ import 'package:xmpp_plugin/models/connection_event.dart';
 import 'package:xmpp_plugin/models/message_model.dart';
 import 'package:xmpp_plugin/models/present_mode.dart';
 import 'package:xmpp_plugin/success_response_event.dart';
-import 'package:xmpp_plugin/xmpp_plugin.dart'; // Importa el paquet XMPP
+import 'package:xmpp_plugin/xmpp_plugin.dart'; 
 import 'dart:async';
 
 class Message {

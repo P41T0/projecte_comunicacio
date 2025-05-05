@@ -465,7 +465,8 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
       if (kDebugMode) {
         print("tipus   ${messageChat.type}");
       }
-      if ((messageChat.type)?.toLowerCase() == "message") {
+      if ((messageChat.type)?.toLowerCase() == "message" ||
+          (messageChat.type)?.toLowerCase() == "chat") {
         if (messageChat.chatStateType == "composing") {
           setState(() {
             estatXatDestinatari = "${widget.destinatari} esta escrivint...";

@@ -248,7 +248,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     await widget.xmpp.changePresenceType(presenceType, presenceMode);
   }
 
-  setMissatge(resposta, user, encripted) {
+  void setMissatge(resposta, user, encripted) {
     DateTime hora = DateTime.now();
     String horaFormatada =
         "${hora.hour}:${hora.minute < 10 ? "0${hora.minute}" : hora.minute}";

@@ -4,8 +4,8 @@ import 'dart:developer';
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:provacomunicacio2/native_log_helper.dart';
-import 'package:provacomunicacio2/screens/chat.dart';
+import 'package:tunneling/native_log_helper.dart';
+import 'package:tunneling/screens/chat.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:xmpp_plugin/ennums/xmpp_connection_state.dart';
 import 'package:xmpp_plugin/error_response_event.dart';
@@ -31,7 +31,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.orange),
       ),
-      home: const MyHomePage(title: 'ChatApp'),
+      home: const MyHomePage(title: 'Tunneling'),
     );
   }
 }

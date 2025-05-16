@@ -16,7 +16,6 @@ class Message {
   String user;
   String id;
   String status;
-  bool encrypted;
 
   Message({
     required this.hour,
@@ -24,7 +23,6 @@ class Message {
     required this.user,
     required this.id,
     required this.status,
-    required this.encrypted,
   });
 }
 
@@ -54,7 +52,6 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     user: "other",
     id: "1",
     status: "llegit",
-    encrypted: false,
   );
   Message m2 = Message(
     hour: "12:01",
@@ -62,7 +59,6 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     user: "me",
     id: "1",
     status: "llegit",
-    encrypted: false,
   );
   Message m3 = Message(
     hour: "12:02",
@@ -70,7 +66,6 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     user: "other",
     id: "1",
     status: "llegit",
-    encrypted: false,
   );
   Message m4 = Message(
     hour: "12:02",
@@ -78,7 +73,6 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     user: "me",
     id: "1",
     status: "llegit",
-    encrypted: false,
   );
   Message m5 = Message(
     hour: "12:05",
@@ -87,7 +81,6 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     user: "other",
     id: "1",
     status: "llegit",
-    encrypted: false,
   );
   Message m6 = Message(
     hour: "12:06",
@@ -95,7 +88,6 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     user: "other",
     id: "1",
     status: "llegit",
-    encrypted: false,
   );
   late final List<Message> _missatges = [m1, m2, m3, m4, m5, m6];
   final ScrollController _scrollController = ScrollController();
@@ -169,6 +161,20 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     setState(() {
       buttonMessage = 'Desconnecta de ${device.productName}';
     });
+
+    // CANCEL·LA qualsevol subscripció anterior
+    _arduinoSubscription?.cancel();
+
+    // CREA el listener aquí
+    _arduinoSubscription = _stream?.listen((String data) async {
+      if (data.isNotEmpty) {
+        setState(() {
+          _data.add(data);
+        });
+        await enviaMissatgeXMPP(data.trim());
+      }
+    });
+
     return true;
   }
 
@@ -181,29 +187,6 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
         SnackBar(content: Text("No s'ha pogut enviar dades a l'Arduino.")),
       );
     }
-  }
-
-  Future<String?> _esperaRespostaArduino() async {
-    if (!arduinoConnected || _stream == null) {
-      return null;
-    }
-    Completer<String?> completer = Completer<String?>();
-    StreamSubscription<String>? subscription;
-
-    subscription = _stream?.listen((String data) {
-      if (data.isNotEmpty) {
-        completer.complete(data);
-        subscription?.cancel();
-      }
-    });
-
-    return completer.future.timeout(
-      Duration(seconds: 5),
-      onTimeout: () {
-        subscription?.cancel();
-        return null;
-      },
-    );
   }
 
   Future setPresence() async {
@@ -259,7 +242,6 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
         user: user,
         status: "enviant",
         id: DateTime.now().millisecondsSinceEpoch.toString(),
-        encrypted: encripted,
       );
       _missatges.add(missatge);
     });
@@ -295,30 +277,9 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
 
     if ((_missatgeEnviar.trim()) != "") {
       try {
-        if (arduinoConnected == true) {
-          // Envia el missatge a l'Arduino
-          enviaDadesAArduino(_missatgeEnviar);
-          // Espera la resposta de l'Arduino
-          String? respostaArduino = await _esperaRespostaArduino();
-          if (respostaArduino == null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  "No s'ha rebut cap resposta de l'Arduino, desconnectant.",
-                ),
-              ),
-            );
-            if (arduinoConnected == true) {
-              connecta(null, false);
-            }
-            return;
-          }
-          enviaMissatgeXMPP(respostaArduino);
-        } else {
-          bool? resposta = await mostrarConfirmacio(context);
-          if (resposta! == true) {
-            enviaMissatgeXMPP(_messageController.text);
-          }
+        bool? resposta = await mostrarConfirmacio(context);
+        if (resposta! == true) {
+          enviaMissatgeXMPP(_messageController.text);
         }
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -366,28 +327,6 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
       if (arduinoConnected == true) {
         // Envia el missatge xifrat a l'Arduino
         enviaDadesAArduino(_missatges[index].missatge);
-        String? respostaArduino = await _esperaRespostaArduino();
-        if (respostaArduino == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                "No s'ha rebut cap resposta de l'Arduino. Desconnectant",
-              ),
-            ),
-          );
-          if (arduinoConnected == true) {
-            connecta(null, false);
-          }
-          return;
-        }
-
-        // Actualitza el contingut del missatge amb la resposta desencriptada
-        setState(() {
-          _missatges[index].missatge = respostaArduino;
-          _missatges[index].encrypted =
-              false; // Marca el missatge com a desencriptat
-        });
-
         if (kDebugMode) {
           print("Missatge desencriptat: ${_missatges[index].missatge}");
         }
@@ -492,6 +431,8 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
             "estatus: ${messageChat.chatStateType} ${messageChat.toString()}",
           );
         }
+      }
+      if (messageChat.type == "Message") {
         if (messageChat.chatStateType == "active" ||
             messageChat.chatStateType == "") {
           setState(() {
@@ -609,10 +550,11 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
         mode = estat;
       });
       await widget.xmpp.changeTypingStatus(widget.destinatari, estat);
-    }
-    if (kDebugMode) {
+      if (kDebugMode) {
       print("Estat de xat enviat: $estat");
     }
+    }
+    
   }
 
   Future<void> subscribeToPresence() async {
@@ -727,14 +669,8 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
                               _missatges[index].missatge,
                               style: TextStyle(
                                 fontWeight: FontWeight.w500,
-                                fontStyle:
-                                    _missatges[index].encrypted
-                                        ? FontStyle.italic
-                                        : FontStyle.normal,
-                                color:
-                                    _missatges[index].encrypted
-                                        ? Colors.grey
-                                        : Colors.black,
+                                fontStyle: FontStyle.normal,
+                                color: Colors.black,
                               ),
                             ),
 
@@ -742,15 +678,6 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
                               mainAxisAlignment: MainAxisAlignment.end,
                               spacing: 10,
                               children: [
-                                if (_missatges[index].encrypted)
-                                  ElevatedButton(
-                                    onPressed:
-                                        () => _desencriptarMissatge(
-                                          index,
-                                          context,
-                                        ),
-                                    child: Text('Desencriptar'),
-                                  ),
                                 Text(
                                   _missatges[index].hour,
                                   style: TextStyle(

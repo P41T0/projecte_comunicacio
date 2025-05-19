@@ -231,7 +231,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     await widget.xmpp.changePresenceType(presenceType, presenceMode);
   }
 
-  void setMissatge(resposta, user, encripted) {
+  void setMissatge(resposta, user) {
     DateTime hora = DateTime.now();
     String horaFormatada =
         "${hora.hour}:${hora.minute < 10 ? "0${hora.minute}" : hora.minute}";
@@ -249,7 +249,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
 
   Future<void> enviaMissatgeXMPP(resposta) async {
     // Afegeix el missatge processat a la llista local
-    setMissatge(resposta, "me", false);
+    setMissatge(resposta, "me");
 
     // Envia el missatge processat a través de XMPP
     int id = DateTime.now().millisecondsSinceEpoch;
@@ -358,7 +358,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
             child: ListBody(
               children: <Widget>[
                 Text(
-                  'No estàs connectat a la placa. Vols enviar el missatge sense encriptar?',
+                  'Vols enviar el missatge sense encriptar?',
                 ),
               ],
             ),
@@ -384,15 +384,6 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
 
   @override
   void onChatMessage(MessageChat messageChat) {
-    // Comprova si el cos del missatge és buit o null
-    if (messageChat.body == null || messageChat.body!.trim().isEmpty) {
-      if (kDebugMode) {
-        print(
-          "Missatge rebut amb cos buit o null de ${messageChat.from} ${messageChat.type} ${messageChat.chatStateType}",
-        );
-      }
-    }
-
     setState(() {
       if ((messageChat.type)?.toLowerCase() == "ack") {
         for (var message in _missatges) {
@@ -402,10 +393,10 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
         }
       }
       if (kDebugMode) {
-        print("tipus   ${messageChat.type}");
+        print("tipus   ${messageChat.type} : ${messageChat.chatStateType}");
       }
       if ((messageChat.type)?.toLowerCase() == "message" ||
-          (messageChat.type)?.toLowerCase() == "chat") {
+          (messageChat.type)?.toLowerCase() == "chatstate") {
         if (messageChat.chatStateType == "composing") {
           setState(() {
             estatXatDestinatari = "${widget.destinatari} esta escrivint...";
@@ -431,8 +422,6 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
             "estatus: ${messageChat.chatStateType} ${messageChat.toString()}",
           );
         }
-      }
-      if (messageChat.type == "Message") {
         if (messageChat.chatStateType == "active" ||
             messageChat.chatStateType == "") {
           setState(() {
@@ -440,7 +429,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
           });
           if (messageChat.body != null && messageChat.body!.trim().isNotEmpty) {
             // Afegeix el missatge rebut a la llista de missatges
-            setMissatge(messageChat.body, messageChat.from.toString(), true);
+            setMissatge(messageChat.body, messageChat.from.toString());
             sendReceipt(messageChat);
             if (arduinoConnected) {
               _desencriptarMissatge(_missatges.length - 1, context);
@@ -551,10 +540,9 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
       });
       await widget.xmpp.changeTypingStatus(widget.destinatari, estat);
       if (kDebugMode) {
-      print("Estat de xat enviat: $estat");
+        print("Estat de xat enviat: $estat");
+      }
     }
-    }
-    
   }
 
   Future<void> subscribeToPresence() async {

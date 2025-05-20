@@ -176,8 +176,9 @@ class _MyHomePageState extends State<MyHomePage>
           ).showSnackBar(SnackBar(content: Text("Usuari desconnectat")));
           break;
         case XmppConnectionState.failed:
-          connectionStatus = 'Error de connexió'; // Error durant la connexió
+          connectionStatus = 'Error de connexió';
           userSessionStarted = false;
+          isAuthenticating = false;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
@@ -268,8 +269,7 @@ class _MyHomePageState extends State<MyHomePage>
   }
 
   void checkConnection() {
-    if (connectionStatus == 'Autenticat' ||
-        connectionStatus == "Error de connexió") {
+    if (connectionStatus == 'Autenticat') {
       disconnectXMPP();
     } else {
       setState(() {

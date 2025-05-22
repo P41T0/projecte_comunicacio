@@ -88,6 +88,9 @@ class _MyHomePageState extends State<MyHomePage>
       isAuthenticating = true;
       connect(username, password, context);
     }
+    if(await _storage.read(key: "lastContact") != null){
+      _destinatariController.text = (await _storage.read(key: "lastContact"))!;
+    }
   }
 
   void checkStoragePermission() async {
@@ -170,6 +173,7 @@ class _MyHomePageState extends State<MyHomePage>
         connectionStatus = 'Desconnectat'; // Connexió desconnectada
         _storage.write(key: "username", value: "");
         _storage.write(key: "password", value: "");
+        _storage.write(key: "lastContact", value: "");
         if (_contrasenyaController.text != "") {
           _contrasenyaController.text = "";
         }
@@ -186,14 +190,12 @@ class _MyHomePageState extends State<MyHomePage>
       }
       setState(() {
         connectionStatus = 'Error de connexió';
-        userSessionStarted = false;
         isAuthenticating = false;
-        _contrasenyaController.text = "";
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            "Error de connexió. Assegura't d'haver introduït les dades correctament",
+            (!userSessionStarted?"Error al realitzar la connexió. Assegura't d'haver introduït les dades correctament i hi hagi connexió a Internet":"Error de connexió. Comprova la teva connexió a Internet"),
           ),
         ),
       );
@@ -570,6 +572,7 @@ class _MyHomePageState extends State<MyHomePage>
                   );
                   return;
                 }
+                _storage.write(key: "lastContact", value: _destinatariController.text);
                 Navigator.push(
                   context,
                   MaterialPageRoute(

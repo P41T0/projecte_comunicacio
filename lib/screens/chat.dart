@@ -275,10 +275,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
 
     if ((_missatgeEnviar.trim()) != "") {
       try {
-        bool? resposta = await mostrarConfirmacio(context);
-        if (resposta! == true) {
           enviaMissatgeXMPP(_messageController.text);
-        }
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Error en enviar el missatge: $e")),
@@ -332,7 +329,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              "No es pot desencriptar el missatge perquè la placa no està connectada",
+              "No es pot enviar el missatge a la placa. Assegura't que estigui ben connectada",
             ),
           ),
         );
@@ -342,42 +339,6 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
         SnackBar(content: Text("Error en desencriptar el missatge $e")),
       );
     }
-  }
-
-  Future<bool?> mostrarConfirmacio(BuildContext context) async {
-    return showDialog<bool>(
-      context: context,
-      barrierDismissible:
-          false, // L'usuari ha de tocar un botó per tancar el diàleg
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Enviar el missatge sense encriptar'),
-          content: const SingleChildScrollView(
-            child: ListBody(
-              children: <Widget>[
-                Text(
-                  'Vols enviar el missatge sense encriptar?',
-                ),
-              ],
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('No'),
-              onPressed: () {
-                Navigator.of(context).pop(false); // Retorna false si es prem No
-              },
-            ),
-            TextButton(
-              child: const Text('Sí'),
-              onPressed: () {
-                Navigator.of(context).pop(true); // Retorna true si es prem Sí
-              },
-            ),
-          ],
-        );
-      },
-    );
   }
 
   @override

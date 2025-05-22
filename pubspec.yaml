@@ -44,6 +44,7 @@ dependencies:
   shared_preferences: ^2.5.2
   flutter_secure_storage: ^9.2.4
   flutter_launcher_icons: ^0.14.3
+  connectivity_plus: ^6.1.4
 
 dev_dependencies:
   flutter_test:

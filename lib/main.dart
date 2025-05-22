@@ -15,6 +15,7 @@ import 'package:xmpp_plugin/models/message_model.dart';
 import 'package:xmpp_plugin/models/present_mode.dart';
 import 'package:xmpp_plugin/success_response_event.dart';
 import 'package:xmpp_plugin/xmpp_plugin.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 void main() {
   runApp(const MyApp());
@@ -68,12 +69,12 @@ class _MyHomePageState extends State<MyHomePage>
     super.initState();
     checkStoragePermission();
     XmppConnection.addListener(this);
-    _attemptAutoLogin();
+    _attemptAutoLogin(context);
     log('didChangeAppLifecycleState() initState');
     WidgetsBinding.instance.addObserver(this);
   }
 
-  Future<void> _attemptAutoLogin() async {
+  Future<void> _attemptAutoLogin(context) async {
     String username = "";
     String password = "";
 
@@ -85,7 +86,7 @@ class _MyHomePageState extends State<MyHomePage>
     }
     if (username != "" && password != "") {
       isAuthenticating = true;
-      connect(username, password);
+      connect(username, password, context);
     }
   }
 
@@ -134,7 +135,7 @@ class _MyHomePageState extends State<MyHomePage>
         break;
       case AppLifecycleState.hidden:
         // TODO: Handle this case.
-        throw UnimplementedError();
+        break;
     }
   }
 
@@ -150,48 +151,53 @@ class _MyHomePageState extends State<MyHomePage>
 
   @override
   void onConnectionEvents(ConnectionEvent connectionEvent) {
-    setState(() {
-      switch (connectionEvent.type) {
-        case XmppConnectionState.authenticated:
-          connectionStatus = 'Autenticat'; // Connexió exitosa
-          userSessionStarted = true;
-          isAuthenticating = false;
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text("Usuari autenticat")));
-          _storage.write(key: "username", value: _nomUsuariController.text);
-          _storage.write(key: "password", value: _contrasenyaController.text);
-          break;
-        case XmppConnectionState.disconnected:
-          isAuthenticating = false;
-          connectionStatus = 'Desconnectat'; // Connexió desconnectada
-          _storage.write(key: "username", value: "");
-          _storage.write(key: "password", value: "");
-          if (_contrasenyaController.text != "") {
-            _contrasenyaController.text = "";
-          }
-          userSessionStarted = false;
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text("Usuari desconnectat")));
-          break;
-        case XmppConnectionState.failed:
-          connectionStatus = 'Error de connexió';
-          userSessionStarted = false;
-          isAuthenticating = false;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                "Error de connexió. Assegura't d'haver introduït les dades correctament",
-              ),
-            ),
-          );
-          break;
-        default:
-          connectionStatus = 'Estat desconegut'; // Altres estats
-          userSessionStarted = false;
+    if (connectionEvent.type == XmppConnectionState.authenticated) {
+      setState(() {
+        connectionStatus = 'Autenticat'; // Connexió exitosa
+        userSessionStarted = true;
+        isAuthenticating = false;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Usuari autenticat")));
+        _storage.write(key: "username", value: _nomUsuariController.text);
+        _storage.write(key: "password", value: _contrasenyaController.text);
+      });
+    }
+
+    if (connectionEvent.type == XmppConnectionState.disconnected) {
+      setState(() {
+        isAuthenticating = false;
+        connectionStatus = 'Desconnectat'; // Connexió desconnectada
+        _storage.write(key: "username", value: "");
+        _storage.write(key: "password", value: "");
+        if (_contrasenyaController.text != "") {
+          _contrasenyaController.text = "";
+        }
+        userSessionStarted = false;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Usuari desconnectat")));
+      });
+    }
+
+    if (connectionEvent.type == XmppConnectionState.failed) {
+      if (kDebugMode) {
+        print("Estat de connexió: Error de connexió");
       }
-    });
+      setState(() {
+        connectionStatus = 'Error de connexió';
+        userSessionStarted = false;
+        isAuthenticating = false;
+        _contrasenyaController.text = "";
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "Error de connexió. Assegura't d'haver introduït les dades correctament",
+          ),
+        ),
+      );
+    }
 
     // Opcional: Mostra un missatge a la consola per depuració
     if (kDebugMode) {
@@ -229,7 +235,18 @@ class _MyHomePageState extends State<MyHomePage>
   final TextEditingController _destinatariController = TextEditingController();
   String host = "exemple.com";
 
-  Future<void> connect(String user, String password) async {
+  Future<bool> checkInternetConnectivity() async {
+  final List<ConnectivityResult> connectivityResults = await (Connectivity().checkConnectivity());
+  if (connectivityResults.contains(ConnectivityResult.none)) {
+    return false; // No hi ha cap tipus de connexió a la xarxa
+  } else {
+    return true; // Hi ha connexió (Wi-Fi, mòbil, ethernet, etc.)
+  }
+}
+
+  Future<void> connect(String user, String password, context) async {
+    bool isConnected = await checkInternetConnectivity();
+    if(isConnected){
     setState(() {
       usernameTitle = user;
     });
@@ -254,12 +271,28 @@ class _MyHomePageState extends State<MyHomePage>
     flutterXmpp = XmppConnection(auth);
     await flutterXmpp.start(_onError);
     await flutterXmpp.login();
-    await changePresenceType(presenceType, presenceMode);
+    }else{
+      setState(() {
+        connectionStatus = 'Error de connexió';
+        userSessionStarted = false;
+        isAuthenticating = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Error de connexió. Comprova la teva connexió a Internet."),
+        ),
+      );
+    }
   }
 
   void _onError(Object error) {
     // TODO : Handle the Error event
     if (kDebugMode) {
+      setState(() {
+        connectionStatus = 'Error de connexió';
+        userSessionStarted = false;
+        isAuthenticating = false;
+      });
       print("Error: ${error.toString()}");
     }
   }
@@ -269,7 +302,7 @@ class _MyHomePageState extends State<MyHomePage>
   }
 
   void checkConnection() {
-    if (connectionStatus == 'Autenticat') {
+    if (userSessionStarted == true) {
       disconnectXMPP();
     } else {
       setState(() {
@@ -295,7 +328,7 @@ class _MyHomePageState extends State<MyHomePage>
         );
         return;
       } else {
-        connect(_nomUsuariController.text, _contrasenyaController.text);
+        connect(_nomUsuariController.text, _contrasenyaController.text, context);
       }
     }
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:usb_serial/usb_serial.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:xmpp_plugin/error_response_event.dart';
 import 'package:xmpp_plugin/models/chat_state_model.dart';
 import 'package:xmpp_plugin/models/connection_event.dart';
@@ -200,6 +201,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
   void initState() {
     super.initState();
     setPresence();
+    WakelockPlus.enable();
     subscribeToPresence(); // Sol·licita subscriure's a l'estat de presència
     XmppConnection.addListener(this); // Registra el listener
     connectaAArduino();
@@ -216,13 +218,9 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
 
   @override
   void dispose() {
-    // Elimina el listener de XMPP
     XmppConnection.removeListener(this);
-
-    // Cancel·la el flux de dades de l'Arduino
     _arduinoSubscription?.cancel();
-
-    // Tanca el port USB si està obert
+    WakelockPlus.disable();
     super.dispose();
     connecta(null, true);
   }

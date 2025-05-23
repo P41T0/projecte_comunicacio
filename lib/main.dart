@@ -88,7 +88,7 @@ class _MyHomePageState extends State<MyHomePage>
       isAuthenticating = true;
       connect(username, password, context);
     }
-    if(await _storage.read(key: "lastContact") != null){
+    if (await _storage.read(key: "lastContact") != null) {
       _destinatariController.text = (await _storage.read(key: "lastContact"))!;
     }
   }
@@ -195,7 +195,9 @@ class _MyHomePageState extends State<MyHomePage>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            (!userSessionStarted?"Error al realitzar la connexió. Assegura't d'haver introduït les dades correctament i hi hagi connexió a Internet":"Error de connexió. Comprova la teva connexió a Internet"),
+            (!userSessionStarted
+                ? "Error al realitzar la connexió. Assegura't d'haver introduït les dades correctament i hi hagi connexió a Internet"
+                : "Error de connexió. Comprova la teva connexió a Internet"),
           ),
         ),
       );
@@ -238,42 +240,43 @@ class _MyHomePageState extends State<MyHomePage>
   String host = "exemple.com";
 
   Future<bool> checkInternetConnectivity() async {
-  final List<ConnectivityResult> connectivityResults = await (Connectivity().checkConnectivity());
-  if (connectivityResults.contains(ConnectivityResult.none)) {
-    return false; // No hi ha cap tipus de connexió a la xarxa
-  } else {
-    return true; // Hi ha connexió (Wi-Fi, mòbil, ethernet, etc.)
+    final List<ConnectivityResult> connectivityResults =
+        await (Connectivity().checkConnectivity());
+    if (connectivityResults.contains(ConnectivityResult.none)) {
+      return false; // No hi ha cap tipus de connexió a la xarxa
+    } else {
+      return true; // Hi ha connexió (Wi-Fi, mòbil, ethernet, etc.)
+    }
   }
-}
 
   Future<void> connect(String user, String password, context) async {
     bool isConnected = await checkInternetConnectivity();
-    if(isConnected){
-    setState(() {
-      usernameTitle = user;
-    });
-    isAuthenticating = true;
-    host = user.split("@")[1];
-    final auth = {
-      "user_jid": "$user/${Platform.isAndroid ? "Android" : "iOS"}",
-      "password": password,
-      "host": host,
-      "port": '5222',
-      "nativeLogFilePath": NativeLogHelper.logFilePath,
-      "requireSSLConnection": true,
-      "autoDeliveryReceipt": false,
-      "useStreamManagement": false,
-      "automaticReconnection": true,
-    };
+    if (isConnected) {
+      setState(() {
+        usernameTitle = user;
+      });
+      isAuthenticating = true;
+      host = user.split("@")[1];
+      final auth = {
+        "user_jid": "$user/${Platform.isAndroid ? "Android" : "iOS"}",
+        "password": password,
+        "host": host,
+        "port": '5222',
+        "nativeLogFilePath": NativeLogHelper.logFilePath,
+        "requireSSLConnection": true,
+        "autoDeliveryReceipt": false,
+        "useStreamManagement": false,
+        "automaticReconnection": true,
+      };
 
-    if (kDebugMode) {
-      print("Intentant connectar amb: $auth");
-    }
+      if (kDebugMode) {
+        print("Intentant connectar amb: $auth");
+      }
 
-    flutterXmpp = XmppConnection(auth);
-    await flutterXmpp.start(_onError);
-    await flutterXmpp.login();
-    }else{
+      flutterXmpp = XmppConnection(auth);
+      await flutterXmpp.start(_onError);
+      await flutterXmpp.login();
+    } else {
       setState(() {
         connectionStatus = 'Error de connexió';
         userSessionStarted = false;
@@ -281,7 +284,9 @@ class _MyHomePageState extends State<MyHomePage>
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Error de connexió. Comprova la teva connexió a Internet."),
+          content: Text(
+            "Error de connexió. Comprova la teva connexió a Internet.",
+          ),
         ),
       );
     }
@@ -330,7 +335,11 @@ class _MyHomePageState extends State<MyHomePage>
         );
         return;
       } else {
-        connect(_nomUsuariController.text, _contrasenyaController.text, context);
+        connect(
+          _nomUsuariController.text,
+          _contrasenyaController.text,
+          context,
+        );
       }
     }
   }
@@ -572,7 +581,10 @@ class _MyHomePageState extends State<MyHomePage>
                   );
                   return;
                 }
-                _storage.write(key: "lastContact", value: _destinatariController.text);
+                _storage.write(
+                  key: "lastContact",
+                  value: _destinatariController.text,
+                );
                 Navigator.push(
                   context,
                   MaterialPageRoute(

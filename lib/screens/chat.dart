@@ -275,7 +275,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
 
     if ((_missatgeEnviar.trim()) != "") {
       try {
-          enviaMissatgeXMPP(_messageController.text);
+        enviaMissatgeXMPP(_messageController.text);
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Error en enviar el missatge: $e")),

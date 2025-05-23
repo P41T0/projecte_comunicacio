@@ -250,9 +250,9 @@ class _MyHomePageState extends State<MyHomePage>
     final List<ConnectivityResult> connectivityResults =
         await (Connectivity().checkConnectivity());
     if (connectivityResults.contains(ConnectivityResult.none)) {
-      return false; // No hi ha cap tipus de connexió a la xarxa
+      return false;
     } else {
-      return true; // Hi ha connexió (Wi-Fi, mòbil, ethernet, etc.)
+      return true;
     }
   }
 

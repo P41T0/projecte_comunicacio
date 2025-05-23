@@ -137,7 +137,6 @@ class _MyHomePageState extends State<MyHomePage>
         log('resumed detachedCallBack()');
         break;
       case AppLifecycleState.hidden:
-        // TODO: Handle this case.
         break;
     }
   }
@@ -154,7 +153,8 @@ class _MyHomePageState extends State<MyHomePage>
 
   @override
   void onConnectionEvents(ConnectionEvent connectionEvent) {
-    if (connectionEvent.type == XmppConnectionState.authenticated) {
+    switch (connectionEvent.type){
+    case (XmppConnectionState.authenticated):
       setState(() {
         connectionStatus = 'Autenticat'; // Connexió exitosa
         userSessionStarted = true;
@@ -165,9 +165,9 @@ class _MyHomePageState extends State<MyHomePage>
         _storage.write(key: "username", value: _nomUsuariController.text);
         _storage.write(key: "password", value: _contrasenyaController.text);
       });
-    }
-
-    if (connectionEvent.type == XmppConnectionState.disconnected) {
+      break;
+    
+    case (XmppConnectionState.disconnected):
       setState(() {
         isAuthenticating = false;
         connectionStatus = 'Desconnectat'; // Connexió desconnectada
@@ -182,9 +182,9 @@ class _MyHomePageState extends State<MyHomePage>
           context,
         ).showSnackBar(SnackBar(content: Text("Usuari desconnectat")));
       });
-    }
-
-    if (connectionEvent.type == XmppConnectionState.failed) {
+      break;
+  
+    case (XmppConnectionState.failed):
       if (kDebugMode) {
         print("Estat de connexió: Error de connexió");
       }
@@ -201,6 +201,13 @@ class _MyHomePageState extends State<MyHomePage>
           ),
         ),
       );
+      break;
+      case null:
+        break;
+      case XmppConnectionState.connected:
+        break;
+      case XmppConnectionState.connecting:
+        break;
     }
 
     // Opcional: Mostra un missatge a la consola per depuració
@@ -293,7 +300,6 @@ class _MyHomePageState extends State<MyHomePage>
   }
 
   void _onError(Object error) {
-    // TODO : Handle the Error event
     if (kDebugMode) {
       setState(() {
         connectionStatus = 'Error de connexió';

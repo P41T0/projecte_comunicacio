@@ -62,7 +62,7 @@ class _MyHomePageState extends State<MyHomePage>
   String connectionStatus = 'Desconnectat';
   bool userSessionStarted = false;
   static const _storage = FlutterSecureStorage();
-  String usernameTitle = "";
+  String username = "";
   bool isAuthenticating = false;
   @override
   void initState() {
@@ -75,21 +75,25 @@ class _MyHomePageState extends State<MyHomePage>
   }
 
   Future<void> _attemptAutoLogin(context) async {
-    String username = "";
     String password = "";
+    String user = "";
 
     if (await _storage.read(key: "username") != null) {
-      username = (await _storage.read(key: "username"))!;
+      user = (await _storage.read(key: "username"))!;
     }
     if (await _storage.read(key: "password") != null) {
       password = (await _storage.read(key: "password"))!;
     }
-    if (username != "" && password != "") {
-      isAuthenticating = true;
+    if (user != "" && password != "") {
+      if (await _storage.read(key: "lastContact") != null) {
+        _destinatariController.text =
+            (await _storage.read(key: "lastContact"))!;
+      }
+      setState(() {
+        username = user;
+        isAuthenticating = true;
+      });
       connect(username, password, context);
-    }
-    if (await _storage.read(key: "lastContact") != null) {
-      _destinatariController.text = (await _storage.read(key: "lastContact"))!;
     }
   }
 
@@ -153,55 +157,61 @@ class _MyHomePageState extends State<MyHomePage>
 
   @override
   void onConnectionEvents(ConnectionEvent connectionEvent) {
-    switch (connectionEvent.type){
-    case (XmppConnectionState.authenticated):
-      setState(() {
-        connectionStatus = 'Autenticat'; // Connexió exitosa
-        userSessionStarted = true;
-        isAuthenticating = false;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Usuari autenticat")));
-        _storage.write(key: "username", value: _nomUsuariController.text);
-        _storage.write(key: "password", value: _contrasenyaController.text);
-      });
-      break;
-    
-    case (XmppConnectionState.disconnected):
-      setState(() {
-        isAuthenticating = false;
-        connectionStatus = 'Desconnectat'; // Connexió desconnectada
-        _storage.write(key: "username", value: "");
-        _storage.write(key: "password", value: "");
-        _storage.write(key: "lastContact", value: "");
-        if (_contrasenyaController.text != "") {
-          _contrasenyaController.text = "";
+    switch (connectionEvent.type) {
+      case (XmppConnectionState.authenticated):
+        setState(() {
+          connectionStatus = 'Autenticat'; // Connexió exitosa
+          userSessionStarted = true;
+          isAuthenticating = false;
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text("Usuari autenticat")));
+          if (username != _nomUsuariController.text &&
+              _nomUsuariController.text != "") {
+            username = _nomUsuariController.text;
+            _storage.write(key: "username", value: _nomUsuariController.text);
+            _storage.write(key: "password", value: _contrasenyaController.text);
+            _destinatariController.text = "";
+            _storage.write(key: "lastContact", value: "");
+          }
+        });
+        break;
+
+      case (XmppConnectionState.disconnected):
+        setState(() {
+          isAuthenticating = false;
+          connectionStatus = 'Desconnectat'; // Connexió desconnectada
+          _storage.write(key: "username", value: "");
+          _storage.write(key: "password", value: "");
+          _storage.write(key: "lastContact", value: "");
+          if (_contrasenyaController.text != "") {
+            _contrasenyaController.text = "";
+          }
+          userSessionStarted = false;
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text("Usuari desconnectat")));
+        });
+        break;
+
+      case (XmppConnectionState.failed):
+        if (kDebugMode) {
+          print("Estat de connexió: Error de connexió");
         }
-        userSessionStarted = false;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Usuari desconnectat")));
-      });
-      break;
-  
-    case (XmppConnectionState.failed):
-      if (kDebugMode) {
-        print("Estat de connexió: Error de connexió");
-      }
-      setState(() {
-        connectionStatus = 'Error de connexió';
-        isAuthenticating = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            (!userSessionStarted
-                ? "Error al realitzar la connexió. Assegura't d'haver introduït les dades correctament i hi hagi connexió a Internet"
-                : "Error de connexió. Comprova la teva connexió a Internet"),
+        setState(() {
+          connectionStatus = 'Error de connexió';
+          isAuthenticating = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              (!userSessionStarted
+                  ? "Error al realitzar la connexió. Assegura't d'haver introduït les dades correctament i hi hagi connexió a Internet"
+                  : "Error de connexió. Comprova la teva connexió a Internet"),
+            ),
           ),
-        ),
-      );
-      break;
+        );
+        break;
       case null:
         break;
       case XmppConnectionState.connected:
@@ -259,9 +269,6 @@ class _MyHomePageState extends State<MyHomePage>
   Future<void> connect(String user, String password, context) async {
     bool isConnected = await checkInternetConnectivity();
     if (isConnected) {
-      setState(() {
-        usernameTitle = user;
-      });
       isAuthenticating = true;
       host = user.split("@")[1];
       final auth = {
@@ -492,7 +499,7 @@ class _MyHomePageState extends State<MyHomePage>
               child: Text('Desconnectar'),
             ),
             Text(
-              "Usuari: $usernameTitle",
+              "Usuari: $username",
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontStyle: FontStyle.italic,

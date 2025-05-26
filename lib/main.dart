@@ -188,11 +188,10 @@ class _MyHomePageState extends State<MyHomePage>
             _contrasenyaController.text = "";
           }
           userSessionStarted = false;
-          
         });
         ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text("Usuari desconnectat")));
+          context,
+        ).showSnackBar(SnackBar(content: Text("Usuari desconnectat")));
         break;
 
       case (XmppConnectionState.failed):

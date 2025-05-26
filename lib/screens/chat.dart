@@ -343,68 +343,68 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
 
   @override
   void onChatMessage(MessageChat messageChat) {
-    setState(() {
-      if ((messageChat.type)?.toLowerCase() == "ack") {
-        for (var message in _missatges) {
-          if (message.id == messageChat.id) {
+    if ((messageChat.type)?.toLowerCase() == "ack") {
+      for (var message in _missatges) {
+        if (message.id == messageChat.id) {
+          setState(() {
             message.status = "enviat"; // Marca el missatge com a llegit
-          }
+          });
+        }
+      }
+    }
+    if (kDebugMode) {
+      print("tipus   ${messageChat.type} : ${messageChat.chatStateType}");
+    }
+    if ((messageChat.type)?.toLowerCase() == "message" ||
+        (messageChat.type)?.toLowerCase() == "chatstate") {
+      if (messageChat.chatStateType == "composing") {
+        setState(() {
+          estatXatDestinatari = "${widget.destinatari} esta escrivint...";
+        });
+        if (kDebugMode) {
+          print("està escrivint");
+        }
+      } else if (messageChat.chatStateType == "paused") {
+        setState(() {
+          estatXatDestinatari = "${widget.destinatari} ha deixat d'escriure";
+        });
+      } else if (messageChat.chatStateType == "inactive") {
+        setState(() {
+          estatXatDestinatari = "";
+        });
+      } else if (messageChat.chatStateType == "gone") {
+        if (kDebugMode) {
+          print("ha marxat");
         }
       }
       if (kDebugMode) {
-        print("tipus   ${messageChat.type} : ${messageChat.chatStateType}");
+        print(
+          "estatus: ${messageChat.chatStateType} ${messageChat.toString()}",
+        );
       }
-      if ((messageChat.type)?.toLowerCase() == "message" ||
-          (messageChat.type)?.toLowerCase() == "chatstate") {
-        if (messageChat.chatStateType == "composing") {
-          setState(() {
-            estatXatDestinatari = "${widget.destinatari} esta escrivint...";
-          });
-          if (kDebugMode) {
-            print("està escrivint");
-          }
-        } else if (messageChat.chatStateType == "paused") {
-          setState(() {
-            estatXatDestinatari = "${widget.destinatari} ha deixat d'escriure";
-          });
-        } else if (messageChat.chatStateType == "inactive") {
-          setState(() {
-            estatXatDestinatari = "";
-          });
-        } else if (messageChat.chatStateType == "gone") {
-          if (kDebugMode) {
-            print("ha marxat");
-          }
-        }
-        if (kDebugMode) {
-          print(
-            "estatus: ${messageChat.chatStateType} ${messageChat.toString()}",
-          );
-        }
-        if (messageChat.chatStateType == "active" ||
-            messageChat.chatStateType == "") {
-          setState(() {
-            estatXatDestinatari = "";
-          });
-          if (messageChat.body != null && messageChat.body!.trim().isNotEmpty) {
-            // Afegeix el missatge rebut a la llista de missatges
-            setMissatge(messageChat.body, messageChat.from.toString());
-            sendReceipt(messageChat);
-            if (arduinoConnected) {
-              _desencriptarMissatge(_missatges.length - 1, context);
-            } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    "No s'ha pogut desencriptar el missatge automaticament perquè la placa no està connectada",
-                  ),
+      if (messageChat.chatStateType == "active" ||
+          messageChat.chatStateType == "") {
+        setState(() {
+          estatXatDestinatari = "";
+        });
+        if (messageChat.body != null && messageChat.body!.trim().isNotEmpty) {
+          // Afegeix el missatge rebut a la llista de missatges
+          setMissatge(messageChat.body, messageChat.from.toString());
+          sendReceipt(messageChat);
+          if (arduinoConnected) {
+            _desencriptarMissatge(_missatges.length - 1, context);
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  "No s'ha pogut desencriptar el missatge automaticament perquè la placa no està connectada",
                 ),
-              );
-            }
+              ),
+            );
           }
         }
       }
-    });
+    }
 
     // Opcional: Mostra el missatge a la consola per depuració
     if (kDebugMode) {

@@ -104,14 +104,12 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
   bool arduinoConnected = false;
   StreamSubscription<String>? _arduinoSubscription;
 
-  Future<void> connectaAArduino() async {
+  Future<void> connectaAArduino(context) async {
     List<UsbDevice> devices = await UsbSerial.listDevices();
     if (devices.isEmpty) {
-      setState(() {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("No hi ha cap placa connectada")),
-        );
-      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("No hi ha cap placa connectada")));
       return;
     }
 
@@ -204,7 +202,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     WakelockPlus.enable();
     subscribeToPresence(); // Sol·licita subscriure's a l'estat de presència
     XmppConnection.addListener(this); // Registra el listener
-    connectaAArduino();
+    connectaAArduino(context);
 
     // Escolta el flux de dades de l'Arduino
     _arduinoSubscription = _stream?.listen((String data) {
@@ -233,14 +231,14 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     DateTime hora = DateTime.now();
     String horaFormatada =
         "${hora.hour}:${hora.minute < 10 ? "0${hora.minute}" : hora.minute}";
+    Message missatge = Message(
+      hour: horaFormatada,
+      missatge: resposta, // Utilitza la resposta de l'Arduino
+      user: user,
+      status: "enviant",
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+    );
     setState(() {
-      Message missatge = Message(
-        hour: horaFormatada,
-        missatge: resposta, // Utilitza la resposta de l'Arduino
-        user: user,
-        status: "enviant",
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-      );
       _missatges.add(missatge);
     });
   }
@@ -297,7 +295,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
   void connectArduinoFunction() {
     try {
       if (arduinoConnected == false) {
-        connectaAArduino();
+        connectaAArduino(context);
       } else {
         _port!.close();
         setState(() {
@@ -469,13 +467,14 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
   void onSuccessEvent(SuccessResponseEvent successResponseEvent) {
     if (successResponseEvent.type.toString() == "message_read_receipt") {
       // Actualitza l'estat del missatge a "llegit"
-      setState(() {
-        for (var message in _missatges) {
-          if (message.id.toString() == successResponseEvent.toString()) {
+
+      for (var message in _missatges) {
+        if (message.id.toString() == successResponseEvent.toString()) {
+          setState(() {
             message.status = "llegit"; // Marca el missatge com a llegit
-          }
+          });
         }
-      });
+      }
 
       // Opcional: Mostra un missatge a la consola
     }

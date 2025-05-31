@@ -4,9 +4,7 @@ import 'dart:developer';
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:tunneling/native_log_helper.dart';
 import 'package:tunneling/screens/chat.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:xmpp_plugin/ennums/xmpp_connection_state.dart';
 import 'package:xmpp_plugin/error_response_event.dart';
 import 'package:xmpp_plugin/models/chat_state_model.dart';
@@ -28,7 +26,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Tunneling',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.orange),
       ),
@@ -67,7 +65,6 @@ class _MyHomePageState extends State<MyHomePage>
   @override
   void initState() {
     super.initState();
-    checkStoragePermission();
     XmppConnection.addListener(this);
     _attemptAutoLogin(context);
     log('didChangeAppLifecycleState() initState');
@@ -94,29 +91,6 @@ class _MyHomePageState extends State<MyHomePage>
         isAuthenticating = true;
       });
       connect(username, password, context);
-    }
-  }
-
-  void checkStoragePermission() async {
-    var status = await Permission.storage.status;
-    if (!status.isGranted) {
-      final PermissionStatus permissionStatus =
-          await Permission.storage.request();
-      if (permissionStatus.isGranted) {
-        String filePath = await NativeLogHelper().getDefaultLogFilePath();
-        if (kDebugMode) {
-          print('logFilePath: $filePath');
-        }
-      } else {
-        if (kDebugMode) {
-          print('logFilePath: please allow permission');
-        }
-      }
-    } else {
-      String filePath = await NativeLogHelper().getDefaultLogFilePath();
-      if (kDebugMode) {
-        print('logFilePath: $filePath');
-      }
     }
   }
 
@@ -276,7 +250,6 @@ class _MyHomePageState extends State<MyHomePage>
         "password": password,
         "host": host,
         "port": '5222',
-        "nativeLogFilePath": NativeLogHelper.logFilePath,
         "requireSSLConnection": true,
         "autoDeliveryReceipt": false,
         "useStreamManagement": false,

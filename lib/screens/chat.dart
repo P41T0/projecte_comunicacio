@@ -133,6 +133,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     if (device == null) {
       arduinoConnected = false;
       if (desconnectant == false) {
+        checkWakelock(false);
         setState(() {
           buttonMessage = "Torna a connectar al dispositiu";
         });
@@ -160,7 +161,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     setState(() {
       buttonMessage = 'Desconnecta de ${device.productName}';
     });
-
+    checkWakelock(true);
     // CANCEL·LA qualsevol subscripció anterior
     _arduinoSubscription?.cancel();
 
@@ -199,7 +200,6 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
   void initState() {
     super.initState();
     setPresence();
-    WakelockPlus.enable();
     subscribeToPresence(); // Sol·licita subscriure's a l'estat de presència
     XmppConnection.addListener(this); // Registra el listener
     connectaAArduino(context);
@@ -218,9 +218,22 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
   void dispose() {
     XmppConnection.removeListener(this);
     _arduinoSubscription?.cancel();
-    WakelockPlus.disable();
+    checkWakelock(false);
     super.dispose();
     connecta(null, true);
+  }
+
+  void checkWakelock(bool enable) async {
+    bool wakelockActive = await WakelockPlus.enabled;
+    if (enable) {
+      if (wakelockActive == false) {
+        await WakelockPlus.enable();
+      }
+    } else {
+      if (wakelockActive == true) {
+        await WakelockPlus.disable();
+      }
+    }
   }
 
   Future<void> changePresenceType(presenceType, presenceMode) async {
@@ -302,7 +315,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
           buttonMessage = 'Torna a connectar a la placa';
           arduinoConnected = false;
         });
-
+        checkWakelock(false);
         if (kDebugMode) {
           print("Port USB tancat correctament.");
         }

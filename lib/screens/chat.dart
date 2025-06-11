@@ -100,7 +100,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
   UsbPort? _port;
   late final List<String> _data = [];
   Stream<String>? _stream;
-  String buttonMessage = "Connecta a l'arduino";
+  String buttonMessage = "Connecta a la placa";
   bool arduinoConnected = false;
   StreamSubscription<String>? _arduinoSubscription;
 
@@ -184,7 +184,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
       _port!.write(Uint8List.fromList(fulldades.codeUnits));
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("No s'ha pogut enviar dades a l'Arduino.")),
+        SnackBar(content: Text("No s'ha pogut enviar dades a la placa.")),
       );
     }
   }

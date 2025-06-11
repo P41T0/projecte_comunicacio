@@ -104,9 +104,10 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
   bool arduinoConnected = false;
   StreamSubscription<String>? _arduinoSubscription;
 
-  Future<void> connectaAArduino(context) async {
+  Future<void> connectaAArduino(BuildContext context) async {
     List<UsbDevice> devices = await UsbSerial.listDevices();
     if (devices.isEmpty) {
+      if (context.mounted == false) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text("No hi ha cap placa connectada")));
@@ -120,7 +121,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     }
   }
 
-  Future<bool> connecta(device, desconnectant) async {
+  Future<bool> connecta(UsbDevice? device, desconnectant) async {
     if (_arduinoSubscription != null) {
       _arduinoSubscription!.cancel();
       _arduinoSubscription = null;
@@ -236,11 +237,14 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     }
   }
 
-  Future<void> changePresenceType(presenceType, presenceMode) async {
+  Future<void> changePresenceType(
+    String presenceType,
+    String presenceMode,
+  ) async {
     await widget.xmpp.changePresenceType(presenceType, presenceMode);
   }
 
-  void setMissatge(resposta, user) {
+  void setMissatge(String resposta, String user) {
     DateTime hora = DateTime.now();
     String horaFormatada =
         "${hora.hour}:${hora.minute < 10 ? "0${hora.minute}" : hora.minute}";
@@ -256,7 +260,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     });
   }
 
-  Future<void> enviaMissatgeXMPP(resposta) async {
+  Future<void> enviaMissatgeXMPP(String resposta) async {
     // Afegeix el missatge processat a la llista local
     setMissatge(resposta, "me");
 
@@ -280,7 +284,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     _desplacarAbaix();
   }
 
-  Future<void> _sendMessage(context) async {
+  Future<void> _sendMessage(BuildContext context) async {
     enviarEstatEscrivint("active");
     _missatgeEnviar = _messageController.text;
 
@@ -327,7 +331,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     }
   }
 
-  void _desencriptarMissatge(int index, context) async {
+  void _desencriptarMissatge(int index, BuildContext context) async {
     try {
       // Espera la resposta desencriptada de l'Arduino
       if (arduinoConnected == true) {
@@ -337,13 +341,17 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
           print("Missatge desencriptat: ${_missatges[index].missatge}");
         }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              "No es pot enviar el missatge a la placa. Assegura't que estigui ben connectada",
+        if (mounted == false) {
+          return;
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                "No es pot enviar el missatge a la placa. Assegura't que estigui ben connectada",
+              ),
             ),
-          ),
-        );
+          );
+        }
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -400,7 +408,9 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
         });
         if (messageChat.body != null && messageChat.body!.trim().isNotEmpty) {
           // Afegeix el missatge rebut a la llista de missatges
-          setMissatge(messageChat.body, messageChat.from.toString());
+          if (messageChat.body != null) {
+            setMissatge(messageChat.body!, messageChat.from.toString());
+          }
           sendReceipt(messageChat);
           if (arduinoConnected) {
             _desencriptarMissatge(_missatges.length - 1, context);
@@ -498,12 +508,6 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     // TODO: implement onXmppError
   }
 
-  void onNewMessage(message) {
-    // Afegeix el missatge rebut a la llista de missatges
-    // Desplaça la vista cap avall per mostrar el nou missatge
-    _desplacarAbaix();
-  }
-
   void enviarEstatEscrivint(String estat) async {
     if (mode != estat) {
       setState(() {
@@ -550,29 +554,28 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
                 Text(
                   estatDestinatari == "PresenceType.available"
                       ? modeDestinatari == "PresenceMode.available"
-                          ? "Disponible"
-                          : modeDestinatari == "PresenceMode.unavailable"
-                          ? "Fora de línia"
-                          : modeDestinatari == "PresenceMode.dnd"
-                          ? "Ocupat"
-                          : modeDestinatari == "PresenceMode.away"
-                          ? "Absent"
-                          : modeDestinatari == "PresenceMode.xa"
-                          ? "Absent durant un temps"
-                          : "Estat desconegut"
+                            ? "Disponible"
+                            : modeDestinatari == "PresenceMode.unavailable"
+                            ? "Fora de línia"
+                            : modeDestinatari == "PresenceMode.dnd"
+                            ? "Ocupat"
+                            : modeDestinatari == "PresenceMode.away"
+                            ? "Absent"
+                            : modeDestinatari == "PresenceMode.xa"
+                            ? "Absent durant un temps"
+                            : "Estat desconegut"
                       : "",
                   style: TextStyle(
                     fontSize: 14,
-                    color:
-                        modeDestinatari == "PresenceMode.available"
-                            ? Colors.green
-                            : modeDestinatari == "PresenceMode.unavailable"
-                            ? Colors.red
-                            : modeDestinatari == "PresenceMode.dnd"
-                            ? Colors.red
-                            : modeDestinatari == "PresenceMode.away"
-                            ? Colors.orange
-                            : Colors.grey,
+                    color: modeDestinatari == "PresenceMode.available"
+                        ? Colors.green
+                        : modeDestinatari == "PresenceMode.unavailable"
+                        ? Colors.red
+                        : modeDestinatari == "PresenceMode.dnd"
+                        ? Colors.red
+                        : modeDestinatari == "PresenceMode.away"
+                        ? Colors.orange
+                        : Colors.grey,
                   ),
                 ),
               ],
@@ -595,8 +598,9 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
                 itemBuilder: (context, index) {
                   bool itsMe = _missatges[index].user == "me" ? true : false;
                   return Align(
-                    alignment:
-                        itsMe ? Alignment.centerRight : Alignment.centerLeft,
+                    alignment: itsMe
+                        ? Alignment.centerRight
+                        : Alignment.centerLeft,
                     child: Card(
                       child: Container(
                         margin: EdgeInsets.symmetric(
@@ -605,24 +609,26 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
                         ),
                         padding: EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color:
-                              itsMe ? Colors.orange[100] : Colors.orange[200],
+                          color: itsMe
+                              ? Colors.orange[100]
+                              : Colors.orange[200],
                           borderRadius: BorderRadius.only(
                             topLeft: Radius.circular(20),
                             topRight: Radius.circular(20),
-                            bottomLeft:
-                                itsMe ? Radius.circular(20) : Radius.zero,
-                            bottomRight:
-                                itsMe ? Radius.zero : Radius.circular(20),
+                            bottomLeft: itsMe
+                                ? Radius.circular(20)
+                                : Radius.zero,
+                            bottomRight: itsMe
+                                ? Radius.zero
+                                : Radius.circular(20),
                           ),
                         ),
                         alignment: Alignment.center,
                         width: MediaQuery.of(context).size.width * 0.75,
                         child: Column(
-                          crossAxisAlignment:
-                              itsMe
-                                  ? CrossAxisAlignment.end
-                                  : CrossAxisAlignment.start,
+                          crossAxisAlignment: itsMe
+                              ? CrossAxisAlignment.end
+                              : CrossAxisAlignment.start,
                           children: [
                             Text(
                               _missatges[index].missatge,

@@ -71,7 +71,7 @@ class _MyHomePageState extends State<MyHomePage>
     WidgetsBinding.instance.addObserver(this);
   }
 
-  Future<void> _attemptAutoLogin(context) async {
+  Future<void> _attemptAutoLogin(BuildContext context) async {
     String password = "";
     String user = "";
 
@@ -83,14 +83,19 @@ class _MyHomePageState extends State<MyHomePage>
     }
     if (user != "" && password != "") {
       if (await _storage.read(key: "lastContact") != null) {
-        _destinatariController.text =
-            (await _storage.read(key: "lastContact"))!;
+        _destinatariController.text = (await _storage.read(
+          key: "lastContact",
+        ))!;
       }
       setState(() {
         username = user;
         isAuthenticating = true;
       });
-      connect(username, password, context);
+      if (context.mounted == false) {
+        return;
+      } else {
+        connect(username, password, context);
+      }
     }
   }
 
@@ -231,8 +236,8 @@ class _MyHomePageState extends State<MyHomePage>
   String host = "exemple.com";
 
   Future<bool> checkInternetConnectivity() async {
-    final List<ConnectivityResult> connectivityResults =
-        await (Connectivity().checkConnectivity());
+    final List<ConnectivityResult> connectivityResults = await (Connectivity()
+        .checkConnectivity());
     if (connectivityResults.contains(ConnectivityResult.none)) {
       return false;
     } else {
@@ -290,7 +295,10 @@ class _MyHomePageState extends State<MyHomePage>
     }
   }
 
-  Future<void> changePresenceType(presenceType, presenceMode) async {
+  Future<void> changePresenceType(
+    String presenceType,
+    String presenceMode,
+  ) async {
     await flutterXmpp.changePresenceType(presenceType, presenceMode);
   }
 
@@ -486,13 +494,9 @@ class _MyHomePageState extends State<MyHomePage>
                 Text("Visibilitat:"),
                 DropdownButton(
                   value: presenceType,
-                  items:
-                      presenceTypeItems.map((String items) {
-                        return DropdownMenuItem(
-                          value: items,
-                          child: Text(items),
-                        );
-                      }).toList(),
+                  items: presenceTypeItems.map((String items) {
+                    return DropdownMenuItem(value: items, child: Text(items));
+                  }).toList(),
                   onChanged: (val) {
                     setState(() {
                       presenceType = val.toString();
@@ -509,13 +513,9 @@ class _MyHomePageState extends State<MyHomePage>
                 Text("Estat:"),
                 DropdownButton(
                   value: presenceMode,
-                  items:
-                      presenceModeitems.map((String items) {
-                        return DropdownMenuItem(
-                          value: items,
-                          child: Text(items),
-                        );
-                      }).toList(),
+                  items: presenceModeitems.map((String items) {
+                    return DropdownMenuItem(value: items, child: Text(items));
+                  }).toList(),
                   onChanged: (val) {
                     setState(() {
                       presenceMode = val.toString();
@@ -574,14 +574,13 @@ class _MyHomePageState extends State<MyHomePage>
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder:
-                        (context) => ChatPage(
-                          xmpp: flutterXmpp,
-                          presenceType: realPresenceType,
-                          presenceMode: realPresenceMode,
-                          destinatari: _destinatariController.text,
-                          // Passa l'objecte XMPP
-                        ),
+                    builder: (context) => ChatPage(
+                      xmpp: flutterXmpp,
+                      presenceType: realPresenceType,
+                      presenceMode: realPresenceMode,
+                      destinatari: _destinatariController.text,
+                      // Passa l'objecte XMPP
+                    ),
                   ),
                 );
               },

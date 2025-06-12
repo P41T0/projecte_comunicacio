@@ -168,8 +168,6 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
       buttonMessage = 'Desconnecta de ${device.productName}';
     });
     checkWakelock(true);
-    // CANCEL·LA qualsevol subscripció anterior
-    _arduinoSubscription?.cancel();
 
     // CREA el listener aquí
     _arduinoSubscription = _stream?.listen((String data) async {
@@ -207,21 +205,14 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     subscribeToPresence(); // Sol·licita subscriure's a l'estat de presència
     XmppConnection.addListener(this); // Registra el listener
     connectaAArduino();
-
-    // Escolta el flux de dades de l'Arduino
-    _arduinoSubscription = _stream?.listen((String data) {
-      if (data.isNotEmpty) {
-        setState(() {
-          _data.add(data);
-        });
-      }
-    });
   }
 
   @override
   void dispose() {
     XmppConnection.removeListener(this);
     _arduinoSubscription?.cancel();
+    _messageController.dispose();
+    _scrollController.dispose();
     checkWakelock(false);
     super.dispose();
     connecta(null, true);
@@ -476,17 +467,16 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
   @override
   void onSuccessEvent(SuccessResponseEvent successResponseEvent) {
     if (successResponseEvent.type.toString() == "message_read_receipt") {
-      // Actualitza l'estat del missatge a "llegit"
-
-      for (var message in _missatges) {
-        if (message.id.toString() == successResponseEvent.toString()) {
-          setState(() {
-            message.status = "llegit"; // Marca el missatge com a llegit
-          });
-        }
+      final id = successResponseEvent.toString();
+      final index = _missatges.indexWhere((m) => m.id == id);
+      if (index != -1) {
+        setState(() {
+          _missatges[index].status = "llegit";
+        });
       }
-
-      // Opcional: Mostra un missatge a la consola
+      if (kDebugMode) {
+        print("Missatge $id marcat com a llegit");
+      }
     }
   }
 
@@ -664,6 +654,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
                     SizedBox(
                       width: 225,
                       child: TextField(
+                        textCapitalization: TextCapitalization.sentences,
                         controller: _messageController,
                         decoration: const InputDecoration(
                           contentPadding: EdgeInsets.symmetric(

@@ -108,6 +108,9 @@ class _MyHomePageState extends State<MyHomePage>
     XmppConnection.removeListener(this);
     WidgetsBinding.instance.removeObserver(this);
     log('didChangeAppLifecycleState() dispose');
+    _contrasenyaController.dispose();
+    _nomUsuariController.dispose();
+    _destinatariController.dispose();
     super.dispose();
   }
 

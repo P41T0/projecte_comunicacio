@@ -104,13 +104,18 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
   bool arduinoConnected = false;
   StreamSubscription<String>? _arduinoSubscription;
 
-  Future<void> connectaAArduino(BuildContext context) async {
-    List<UsbDevice> devices = await UsbSerial.listDevices();
-    if (devices.isEmpty) {
-      if (context.mounted == false) return;
+  void mostraSnackBar(String missatge) {
+    if (mounted == true) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text("No hi ha cap placa connectada")));
+      ).showSnackBar(SnackBar(content: Text(missatge)));
+    }
+  }
+
+  Future<void> connectaAArduino() async {
+    List<UsbDevice> devices = await UsbSerial.listDevices();
+    if (devices.isEmpty) {
+      mostraSnackBar("No hi ha cap placa connectada");
       return;
     }
 
@@ -184,9 +189,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
       String fulldades = "$dades\r\n";
       _port!.write(Uint8List.fromList(fulldades.codeUnits));
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("No s'ha pogut enviar dades a la placa.")),
-      );
+      mostraSnackBar("No s'ha pogut enviar dades a la placa.");
     }
   }
 
@@ -203,15 +206,15 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     setPresence();
     subscribeToPresence(); // Sol·licita subscriure's a l'estat de presència
     XmppConnection.addListener(this); // Registra el listener
-    connectaAArduino(context);
+    connectaAArduino();
 
     // Escolta el flux de dades de l'Arduino
     _arduinoSubscription = _stream?.listen((String data) {
-      setState(() {
-        if (data.isNotEmpty) {
+      if (data.isNotEmpty) {
+        setState(() {
           _data.add(data);
-        }
-      });
+        });
+      }
     });
   }
 
@@ -284,7 +287,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     _desplacarAbaix();
   }
 
-  Future<void> _sendMessage(BuildContext context) async {
+  Future<void> _sendMessage() async {
     enviarEstatEscrivint("active");
     _missatgeEnviar = _messageController.text;
 
@@ -292,9 +295,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
       try {
         enviaMissatgeXMPP(_messageController.text);
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error en enviar el missatge: $e")),
-        );
+        mostraSnackBar("Error en enviar el missatge: $e");
       }
     }
   }
@@ -312,7 +313,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
   void connectArduinoFunction() {
     try {
       if (arduinoConnected == false) {
-        connectaAArduino(context);
+        connectaAArduino();
       } else {
         _port!.close();
         setState(() {
@@ -331,7 +332,7 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
     }
   }
 
-  void _desencriptarMissatge(int index, BuildContext context) async {
+  void _desencriptarMissatge(int index) async {
     try {
       // Espera la resposta desencriptada de l'Arduino
       if (arduinoConnected == true) {
@@ -341,22 +342,12 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
           print("Missatge desencriptat: ${_missatges[index].missatge}");
         }
       } else {
-        if (mounted == false) {
-          return;
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                "No es pot enviar el missatge a la placa. Assegura't que estigui ben connectada",
-              ),
-            ),
-          );
-        }
+        mostraSnackBar(
+          "No es pot enviar el missatge a la placa. Assegura't que estigui ben connectada",
+        );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error en desencriptar el missatge $e")),
-      );
+      mostraSnackBar("Error en desencriptar el missatge $e");
     }
   }
 
@@ -413,14 +404,10 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
           }
           sendReceipt(messageChat);
           if (arduinoConnected) {
-            _desencriptarMissatge(_missatges.length - 1, context);
+            _desencriptarMissatge(_missatges.length - 1);
           } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  "No s'ha pogut desencriptar el missatge automaticament perquè la placa no està connectada",
-                ),
-              ),
+            mostraSnackBar(
+              "No s'ha pogut desencriptar el missatge automaticament perquè la placa no està connectada",
             );
           }
         }
@@ -698,13 +685,13 @@ class _ChatPageState extends State<ChatPage> implements DataChangeEvents {
                           }
                         },
                         onEditingComplete: () {
-                          _sendMessage(context);
+                          _sendMessage();
                           // Notifica que estàs actiu
                         },
                       ),
                     ),
                     ElevatedButton(
-                      onPressed: () => _sendMessage(context),
+                      onPressed: () => _sendMessage(),
                       child: Text('Enviar'),
                     ),
                   ],

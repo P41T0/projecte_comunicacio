@@ -66,12 +66,20 @@ class _MyHomePageState extends State<MyHomePage>
   void initState() {
     super.initState();
     XmppConnection.addListener(this);
-    _attemptAutoLogin(context);
+    _attemptAutoLogin();
     log('didChangeAppLifecycleState() initState');
     WidgetsBinding.instance.addObserver(this);
   }
 
-  Future<void> _attemptAutoLogin(BuildContext context) async {
+  void mostraSnackBar(String missatge) {
+    if (mounted == true) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(missatge)));
+    }
+  }
+
+  Future<void> _attemptAutoLogin() async {
     String password = "";
     String user = "";
 
@@ -91,11 +99,7 @@ class _MyHomePageState extends State<MyHomePage>
         username = user;
         isAuthenticating = true;
       });
-      if (context.mounted == false) {
-        return;
-      } else {
-        connect(username, password, context);
-      }
+      connect(username, password);
     }
   }
 
@@ -138,39 +142,36 @@ class _MyHomePageState extends State<MyHomePage>
   void onConnectionEvents(ConnectionEvent connectionEvent) {
     switch (connectionEvent.type) {
       case (XmppConnectionState.authenticated):
+        mostraSnackBar("Usuari autenticat");
         setState(() {
           connectionStatus = 'Autenticat'; // Connexió exitosa
           userSessionStarted = true;
           isAuthenticating = false;
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text("Usuari autenticat")));
           if (username != _nomUsuariController.text &&
               _nomUsuariController.text != "") {
             username = _nomUsuariController.text;
-            _storage.write(key: "username", value: _nomUsuariController.text);
-            _storage.write(key: "password", value: _contrasenyaController.text);
+
             _destinatariController.text = "";
-            _storage.write(key: "lastContact", value: "");
           }
         });
+        _storage.write(key: "username", value: _nomUsuariController.text);
+        _storage.write(key: "password", value: _contrasenyaController.text);
+        _storage.write(key: "lastContact", value: "");
         break;
 
       case (XmppConnectionState.disconnected):
+        _storage.write(key: "username", value: "");
+        _storage.write(key: "password", value: "");
+        _storage.write(key: "lastContact", value: "");
         setState(() {
           isAuthenticating = false;
           connectionStatus = 'Desconnectat'; // Connexió desconnectada
-          _storage.write(key: "username", value: "");
-          _storage.write(key: "password", value: "");
-          _storage.write(key: "lastContact", value: "");
           if (_contrasenyaController.text != "") {
             _contrasenyaController.text = "";
           }
           userSessionStarted = false;
         });
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Usuari desconnectat")));
+        mostraSnackBar("Usuari desconnectat");
         break;
 
       case (XmppConnectionState.failed):
@@ -181,14 +182,10 @@ class _MyHomePageState extends State<MyHomePage>
           connectionStatus = 'Error de connexió';
           isAuthenticating = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              (!userSessionStarted
-                  ? "Error al realitzar la connexió. Assegura't d'haver introduït les dades correctament i hi hagi connexió a Internet"
-                  : "Error de connexió. Comprova la teva connexió a Internet"),
-            ),
-          ),
+        mostraSnackBar(
+          !userSessionStarted
+              ? "Error al realitzar la connexió. Assegura't d'haver introduït les dades correctament i hi hagi connexió a Internet"
+              : "Error de connexió. Comprova la teva connexió a Internet",
         );
         break;
       case null:
@@ -245,7 +242,7 @@ class _MyHomePageState extends State<MyHomePage>
     }
   }
 
-  Future<void> connect(String user, String password, context) async {
+  Future<void> connect(String user, String password) async {
     bool isConnected = await checkInternetConnectivity();
     if (isConnected) {
       isAuthenticating = true;
@@ -274,12 +271,9 @@ class _MyHomePageState extends State<MyHomePage>
         userSessionStarted = false;
         isAuthenticating = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            "Error de connexió. Comprova la teva connexió a Internet.",
-          ),
-        ),
+
+      mostraSnackBar(
+        "Error de connexió. Comprova la teva connexió a Internet.",
       );
     }
   }
@@ -310,30 +304,18 @@ class _MyHomePageState extends State<MyHomePage>
         _nomUsuariController.text = _nomUsuariController.text.trim();
       });
       if (_nomUsuariController.text.trim() == "") {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("No s'ha introduit cap usuari.")),
-        );
+        mostraSnackBar("No s'ha introduit cap usuari.");
         return;
       } else if (_contrasenyaController.text.trim() == "") {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("No s'ha introduït cap contrasenya.")),
-        );
+        mostraSnackBar("No s'ha introduït cap contrasenya.");
         return;
       } else if (!esUnCorreuElectr(_nomUsuariController.text)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              "L'usuari introduït no correspon a un correu electrònic",
-            ),
-          ),
+        mostraSnackBar(
+          "L'usuari introduït no correspon a un correu electrònic",
         );
         return;
       } else {
-        connect(
-          _nomUsuariController.text,
-          _contrasenyaController.text,
-          context,
-        );
+        connect(_nomUsuariController.text, _contrasenyaController.text);
       }
     }
   }
@@ -541,29 +523,17 @@ class _MyHomePageState extends State<MyHomePage>
               child: Text('Chat'),
               onPressed: () {
                 if (userSessionStarted == false) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Inicia la sessió per a poder enviar missatges',
-                      ),
-                    ),
+                  mostraSnackBar(
+                    'Inicia la sessió per a poder enviar missatges',
                   );
                   return;
                 }
                 if (_destinatariController.text.trim().isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('El camp del destinatari està buit'),
-                    ),
-                  );
+                  mostraSnackBar('El camp del destinatari està buit');
                   return;
                 } else if (!esUnCorreuElectr(_destinatariController.text)) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        "El text introduit en el destinatari no correspon a un correu electrònic",
-                      ),
-                    ),
+                  mostraSnackBar(
+                    "El text introduit en el destinatari no correspon a un correu electrònic",
                   );
                   return;
                 }
